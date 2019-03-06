@@ -872,11 +872,13 @@ void t_swift_generator::generate_swift_struct_hashable_extension(ostream& out,
       indent(out) << "hasher.combine(" << maybe_escape_identifier(tfield->get_name()) << ")" << endl;
     }
   } else {
+    indent(out) << "switch self {" << endl;
     for (m_iter = members.begin(); m_iter != members.end(); m_iter++) {
       t_field *tfield = *m_iter;
       // TODO: Include case in hash, to distinguish between different cases with equal value?
       indent(out) << "case ." << tfield->get_name() << "(let val): hasher.combine(val)" << endl;
     }
+    indent(out) << "}" << endl << endl;
   }
 
   block_close(out);
