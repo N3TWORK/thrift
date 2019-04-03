@@ -20,7 +20,7 @@
 AC_PREREQ(2.65)
 AC_CONFIG_MACRO_DIR([./aclocal])
 
-AC_INIT([thrift], [0.11.0])
+AC_INIT([thrift], [0.12.1])
 
 AC_CONFIG_AUX_DIR([.])
 
@@ -109,6 +109,8 @@ fi
 
 AM_EXTRA_RECURSIVE_TARGETS([style])
 AC_SUBST(CPPSTYLE_CMD, 'find . -type f \( -iname "*.h" -or -iname "*.cpp" -or -iname "*.cc" -or -iname "*.tcc" \) -printf "Reformatting: %h/%f\n" -exec clang-format -i {} \;')
+# '
+# The above comment is to fix editor syntax highlighting
 
 AC_ARG_ENABLE([libs],
   AS_HELP_STRING([--enable-libs], [build the Apache Thrift libraries [default=yes]]),
@@ -117,8 +119,10 @@ AC_ARG_ENABLE([libs],
 have_libs=yes
 if test "$enable_libs" = "no"; then
   have_libs="no"
+  with_as3="no"
   with_cpp="no"
   with_c_glib="no"
+  with_cl="no"
   with_java="no"
   with_csharp="no"
   with_python="no"
@@ -135,9 +139,22 @@ if test "$enable_libs" = "no"; then
   with_go="no"
   with_d="no"
   with_nodejs="no"
+  with_nodets="no"
   with_lua="no"
   with_rs="no"
 fi
+
+AX_THRIFT_LIB(as3, [as3], yes)
+have_as3=no
+if test "$with_as3" = "yes"; then
+  if test "${FLEX_HOME+set}" = set; then 
+    AC_PATH_PROGS([FLEX_COMPC], [compc], "fail", [$PATH$PATH_SEPARATOR$FLEX_HOME/bin])
+    if test "$FLEX_COMPC" != "fail"; then
+      have_as3="yes"
+    fi
+  fi
+fi
+AM_CONDITIONAL(WITH_AS3, [test "$have_as3" = "yes"])
 
 AX_THRIFT_LIB(cpp, [C++], yes)
 have_cpp=no
@@ -198,6 +215,7 @@ if test "$with_c_glib" = "yes"; then
   PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.0], have_glib2=yes, have_glib2=no)
   PKG_CHECK_MODULES([GOBJECT], [gobject-2.0 >= 2.0], have_gobject2=yes, have_gobject2=no)
   if test "$have_glib2" = "yes" -a "$have_gobject2" = "yes" ; then
+    AC_PATH_PROG([GSETTINGS], [gsettings])
     have_c_glib="yes"
   fi
 fi
@@ -235,6 +253,7 @@ if test "$with_java" = "yes";  then
   AX_CHECK_ANT_VERSION($ANT, 1.7)
   AC_SUBST(CLASSPATH)
   AC_SUBST(ANT_FLAGS)
+  AC_SUBST(GRADLE_OPTS)
   if test "x$JAVA" != "x" && test "x$JAVAC" != "x" && test "x$ANT" != "x" ; then
     have_java="yes"
   fi
@@ -275,6 +294,18 @@ if test "$with_nodejs" = "yes"; then
   fi
 fi
 AM_CONDITIONAL(WITH_NODEJS, [test "$have_nodejs" = "yes"])
+AM_CONDITIONAL(HAVE_NPM, [test "x$NPM" != "x"])
+
+AX_THRIFT_LIB(nodets, [Nodets], yes)
+have_nodets=no
+if test "$with_nodets" = "yes"; then
+  AC_PATH_PROGS([NODETS], [nodets node])
+  AC_PATH_PROG([NPM], [npm])
+  if test "x$NODETS" != "x" -a "x$NPM" != "x"; then
+    have_nodets="yes"
+  fi
+fi
+AM_CONDITIONAL(WITH_NODETS, [test "$have_nodets" = "yes"])
 AM_CONDITIONAL(HAVE_NPM, [test "x$NPM" != "x"])
 
 AX_THRIFT_LIB(lua, [Lua], yes)
@@ -352,9 +383,6 @@ if test "$with_php_extension" = "yes"; then
   fi
 fi
 AM_CONDITIONAL(WITH_PHP_EXTENSION, [test "$have_php_extension" = "yes"])
-
-AC_PATH_PROG([PHPUNIT], [phpunit])
-AM_CONDITIONAL(HAVE_PHPUNIT, [test "x$PHPUNIT" != "x"])
 
 AX_THRIFT_LIB(dart, [DART], yes)
 if test "$with_dart" = "yes"; then
@@ -455,6 +483,16 @@ if test "$with_rs" = "yes";  then
 fi
 AM_CONDITIONAL(WITH_RS, [test "$have_rs" = "yes"])
 
+AX_THRIFT_LIB(cl, [Common Lisp], yes)
+have_cl="no"
+if test "$with_cl" = "yes";  then
+  AC_PATH_PROG([SBCL], [sbcl])
+  if test "x$SBCL" != "x"; then
+    have_cl="yes"
+  fi
+fi
+AM_CONDITIONAL(WITH_CL, [test "$have_cl" = "yes"])
+
 AX_THRIFT_LIB(haxe, [Haxe], yes)
 if test "$with_haxe" = "yes";  then
   AC_PATH_PROG([HAXE], [haxe])
@@ -515,7 +553,7 @@ linker flags for OPTLINK. Please set DMD_LIBEVENT_FLAGS manually.])
       else
         AX_LIB_EVENT([2.0])
         if test "$success" = "yes"; then
-          DMD_LIBEVENT_FLAGS=$(echo "$LIBEVENT_LDFLAGS $LIBEVENT_LIBS" | \
+          DMD_LIBEVENT_FLAGS=$(echo "-fuse-ld=gold $LIBEVENT_LDFLAGS $LIBEVENT_LIBS" | \
             sed -e 's/^ *//g;s/ *$//g;s/^\(.\)/-L\1/g;s/  */ -L/g')
           with_d_event_tests="yes"
         else
@@ -539,7 +577,7 @@ linker flags for OPTLINK. Please set DMD_OPENSSL_FLAGS manually.])
       else
         AX_CHECK_OPENSSL([with_d_ssl_tests="yes"])
         if test "$with_d_ssl_tests" = "yes"; then
-          DMD_OPENSSL_FLAGS=$(echo "$OPENSSL_LDFLAGS $OPENSSL_LIBS" | \
+          DMD_OPENSSL_FLAGS=$(echo "-fuse-ld=gold $OPENSSL_LDFLAGS $OPENSSL_LIBS" | \
             sed -e 's/^ *//g;s/ *$//g;s/^\(.\)/-L\1/g;s/  */ -L/g')
         else
           AC_MSG_WARN([D OpenSSL interface present, but OpenSSL library not found.])
@@ -624,11 +662,14 @@ AC_CHECK_HEADERS([limits.h])
 AC_CHECK_HEADERS([netdb.h])
 AC_CHECK_HEADERS([netinet/in.h])
 AC_CHECK_HEADERS([pthread.h])
+AC_CHECK_HEADERS([signal.h])
 AC_CHECK_HEADERS([stddef.h])
 AC_CHECK_HEADERS([stdlib.h])
+AC_CHECK_HEADERS([sys/ioctl.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([sys/time.h])
 AC_CHECK_HEADERS([sys/un.h])
+AC_CHECK_HEADERS([poll.h])
 AC_CHECK_HEADERS([sys/poll.h])
 AC_CHECK_HEADERS([sys/resource.h])
 AC_CHECK_HEADERS([unistd.h])
@@ -786,6 +827,8 @@ AC_CONFIG_FILES([
   compiler/cpp/test/Makefile
   compiler/cpp/src/thrift/version.h
   lib/Makefile
+  lib/as3/Makefile
+  lib/cl/Makefile
   lib/cpp/Makefile
   lib/cpp/test/Makefile
   lib/cpp/thrift-nb.pc
@@ -812,8 +855,9 @@ AC_CONFIG_FILES([
   lib/json/test/Makefile
   lib/netcore/Makefile
   lib/nodejs/Makefile
+  lib/nodets/Makefile
   lib/perl/Makefile
-  lib/perl/test/Makefile
+  lib/perl/t/Makefile
   lib/php/Makefile
   lib/php/test/Makefile
   lib/dart/Makefile
@@ -827,6 +871,7 @@ AC_CONFIG_FILES([
   test/Makefile
   test/features/Makefile
   test/c_glib/Makefile
+  test/cl/Makefile
   test/cpp/Makefile
   test/csharp/Makefile
   test/erl/Makefile
@@ -845,6 +890,7 @@ AC_CONFIG_FILES([
   test/rs/Makefile
   tutorial/Makefile
   tutorial/c_glib/Makefile
+  tutorial/cl/Makefile
   tutorial/cpp/Makefile
   tutorial/d/Makefile
   tutorial/go/Makefile
@@ -862,6 +908,8 @@ AC_CONFIG_FILES([
   tutorial/rs/Makefile
 ])
 
+if test "$have_as3" = "yes" ; then MAYBE_AS3="as3" ; else MAYBE_AS3="" ; fi
+AC_SUBST([MAYBE_AS3])
 if test "$have_cpp" = "yes" ; then MAYBE_CPP="cpp" ; else MAYBE_CPP="" ; fi
 AC_SUBST([MAYBE_CPP])
 if test "$have_c_glib" = "yes" ; then MAYBE_C_GLIB="c_glib" ; else MAYBE_C_GLIB="" ; fi
@@ -890,6 +938,8 @@ if test "$have_go" = "yes" ; then MAYBE_GO="go" ; else MAYBE_GO="" ; fi
 AC_SUBST([MAYBE_GO])
 if test "$have_nodejs" = "yes" ; then MAYBE_NODEJS="nodejs" ; else MAYBE_NODEJS="" ; fi
 AC_SUBST([MAYBE_NODEJS])
+if test "$have_nodets" = "yes" ; then MAYBE_NODETS="nodets" ; else MAYBE_NODETS="" ; fi
+AC_SUBST([MAYBE_NODETS])
 if test "$have_erlang" = "yes" ; then MAYBE_ERLANG="erl" ; else MAYBE_ERLANG="" ; fi
 AC_SUBST([MAYBE_ERLANG])
 if test "$have_lua" = "yes" ; then MAYBE_LUA="lua" ; else MAYBE_LUA="" ; fi
@@ -898,6 +948,8 @@ if test "$have_rs" = "yes" ; then MAYBE_RS="rs" ; else MAYBE_RS="" ; fi
 AC_SUBST([MAYBE_RS])
 if test "$have_dotnetcore" = "yes" ; then MAYBE_DOTNETCORE="netcore" ; else MAYBE_DOTNETCORE="" ; fi
 AC_SUBST([MAYBE_DOTNETCORE])
+if test "$have_cl" = "yes" ; then MAYBE_CL="cl" ; else MAYBE_CL="" ; fi
+AC_SUBST([MAYBE_CL])
 
 AC_OUTPUT
 
@@ -905,9 +957,11 @@ AC_OUTPUT
 echo
 echo "$PACKAGE $VERSION"
 echo
+echo "Building ActionScript3 Library : $have_as3"
 echo "Building C (GLib) Library .... : $have_c_glib"
 echo "Building C# (Mono) Library ... : $have_csharp"
 echo "Building C++ Library ......... : $have_cpp"
+echo "Building Common Lisp Library.. : $have_cl"
 echo "Building D Library ........... : $have_d"
 echo "Building Dart Library ........ : $have_dart"
 echo "Building dotnetcore Library .. : $have_dotnetcore"
@@ -926,6 +980,17 @@ echo "Building Py3 Library ......... : $have_py3"
 echo "Building Ruby Library ........ : $have_ruby"
 echo "Building Rust Library ........ : $have_rs"
 
+if test "$have_as3" = "yes" ; then
+  echo
+  echo "ActionScript Library:"
+  echo "   FLEX_HOME ................. : $FLEX_HOME"
+  echo "   Using compc version ....... : $($FLEX_COMPC --version)"
+fi
+if test "$have_c_glib" = "yes" ; then
+  echo
+  echo "C (glib):"
+  echo "   Using glib version ........ : $($GSETTINGS --version)"
+fi
 if test "$have_csharp" = "yes" ; then
   echo
   echo "C# Library:"
@@ -941,6 +1006,12 @@ if test "$have_cpp" = "yes" ; then
   echo "   Build TQTcpServer (Qt4) ... : $have_qt"
   echo "   Build TQTcpServer (Qt5) ... : $have_qt5"
   echo "   C++ compiler version ...... : $($CXX --version | head -1)"
+fi
+if test "$have_cl" = "yes" ; then
+  echo
+  echo "Common Lisp Library:"
+  echo "   Using Common Lisp ......... : $SBCL"
+  echo "   Using Common Lisp version . : $($SBCL --version)"
 fi
 if test "$have_d" = "yes" ; then
   echo
@@ -992,10 +1063,10 @@ fi
 if test "$have_java" = "yes" ; then
   echo
   echo "Java Library:"
-  echo "   Using ant ................. : $ANT"
+  echo "   Using gradlew ............. : lib/java/gradlew"
   echo "   Using java ................ : $JAVA"
   echo "   Using javac ............... : $JAVAC"
-  echo "   Using ant version ......... : $($ANT -version 2>&1)"
+  echo "   Using Gradle version ...... : $(lib/java/gradlew --version --quiet | grep Gradle 2>&1)"
   echo "   Using java version ........ : $($JAVA -version 2>&1 | grep 'version ')"
 fi
 if test "$have_lua" = "yes" ; then

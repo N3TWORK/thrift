@@ -20,6 +20,10 @@
 SUBDIRS = json xml
 PRECROSS_TARGET =
 
+if WITH_AS3
+SUBDIRS += as3
+endif
+
 if WITH_CPP
 # cpp dir is picked directly by plugin build
 if !WITH_PLUGIN
@@ -87,6 +91,7 @@ endif
 if WITH_NODEJS
 SUBDIRS += nodejs
 PRECROSS_TARGET += precross-nodejs
+SUBDIRS += nodets
 endif
 
 if WITH_LUA
@@ -95,6 +100,10 @@ endif
 
 if WITH_RS
 SUBDIRS += rs
+endif
+
+if WITH_CL
+SUBDIRS += cl
 endif
 
 # All of the libs that don't use Automake need to go in here

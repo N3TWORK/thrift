@@ -62,6 +62,9 @@ set(thrift-compiler_SOURCES
     src/thrift/audit/t_audit.cpp
 )
 
+set(thrift_compiler_LANGS
+)
+
 # This macro adds an option THRIFT_COMPILER_${NAME}
 # that allows enabling or disabling certain languages
 macro(THRIFT_ADD_COMPILER name description initial)
@@ -70,6 +73,7 @@ macro(THRIFT_ADD_COMPILER name description initial)
     option(${enabler} ${description} ${initial})
     if(${enabler})
         list(APPEND thrift-compiler_SOURCES ${src})
+        list(APPEND thrift_compiler_LANGS ${name})
     endif()
 endmacro()
 
@@ -110,7 +114,7 @@ THRIFT_ADD_COMPILER(sql     "Enable compiler for SQL ORM" ON)
 # we also add the current binary directory for generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR} src)
 
-if(NOT ${WITH_PLUGIN})
+if(NOT DEFINED WITH_PLUGIN OR NOT ${WITH_PLUGIN})
     list(APPEND thrift-compiler_SOURCES ${compiler_core})
 endif()
 
