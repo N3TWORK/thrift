@@ -11,7 +11,8 @@
 # brew install bison
 # brew install openssl
 
-# brew link bison -force
+# echo 'export LDFLAGS="-L/usr/local/opt/bison/lib"' >> ~/.profile 
+# echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.profile
 
 #first
 ./bootstrap.sh
