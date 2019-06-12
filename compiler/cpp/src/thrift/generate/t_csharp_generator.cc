@@ -196,7 +196,8 @@ public:
                         bool in_countainer = false,
                         bool in_init = false,
                         bool in_param = false,
-                        bool is_required = false);
+                        bool is_required = false,
+                        bool is_const = false);
   std::string base_type_name(t_base_type* tbase,
                              bool in_container = false,
                              bool in_param = false,
@@ -592,22 +593,22 @@ bool t_csharp_generator::print_const_value(std::ostream& out,
 
   if (!defval || needtype) {
     out << (in_static ? "" : type->is_base_type() ? "public const " : "public static ")
-        << type_name(type) << " ";
+        << type_name(type, false, false, false, false, true) << " ";
   }
   if (type->is_base_type()) {
     string v2 = render_const_value(out, name, type, value);
     out << name << " = " << v2 << ";" << endl;
     need_static_construction = false;
   } else if (type->is_enum()) {
-    out << name << " = " << type_name(type, false, true) << "." << value->get_identifier_name()
+    out << name << " = " << type_name(type, false, true, false, false, true) << "." << value->get_identifier_name()
         << ";" << endl;
     need_static_construction = false;
   } else if (type->is_struct() || type->is_xception()) {
-    out << name << " = new " << type_name(type) << "();" << endl;
+    out << name << " = new " << type_name(type, false, false, false, false, true) << "();" << endl;
   } else if (type->is_map()) {
-    out << name << " = new " << type_name(type, true, true) << "();" << endl;
+    out << name << " = new " << type_name(type, true, true, false, false, true) << "();" << endl;
   } else if (type->is_list() || type->is_set()) {
-    out << name << " = new " << type_name(type) << "();" << endl;
+    out << name << " = new " << type_name(type, false, false, false, false, true) << "();" << endl;
   }
 
   if (defval && !type->is_base_type() && !type->is_enum()) {
@@ -2992,14 +2993,17 @@ string t_csharp_generator::type_name(t_type* ttype,
                                      bool in_container,
                                      bool in_init,
                                      bool in_param,
-                                     bool is_required) {
+                                     bool is_required,
+                                     bool is_const) {
   (void)in_init;
   while (ttype->is_typedef()) {
     ttype = ((t_typedef*)ttype)->get_type();
   }
 
   if (ttype->is_base_type()) {
-    return base_type_name((t_base_type*)ttype, in_container, in_param, is_required);
+    string nm = base_type_name((t_base_type*)ttype, in_container, in_param, is_required);
+    if (is_const && leg_ && nm == "Str") nm = "string";
+    return nm;
   } else if (ttype->is_map()) {
     t_map* tmap = (t_map*)ttype;
     return "Dictionary<" + type_name(tmap->get_key_type(), true) + ", "
@@ -3037,7 +3041,7 @@ string t_csharp_generator::base_type_name(t_base_type* tbase,
     if (tbase->is_binary()) {
       return "byte[]";
     } else {
-      return "string";
+      return leg_ ? "Str" : "string";
     }
   case t_base_type::TYPE_BOOL:
     return "bool" + postfix;
