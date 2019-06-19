@@ -27,6 +27,8 @@
 #include <stack>
 #include <vector>
 #include <map>
+#include <locale>
+#include <codecvt>
 #include <string>
 #include <cStringIO.h>
 #include <stringobject.h>
@@ -125,12 +127,34 @@ public:
   		output_ = realOutput_;
   		uint32_t stringCount = stringList_.size();
     	writeVarint(stringCount);
+        uint32_t rewrittenStrings = 0;
+        
+        std::wstring_convert<std::codecvt_utf8<wchar_t> > utfconv;
+        
     	for(uint32_t i=0; i < stringCount; ++i)
     	{
     		char* cstr = (char*)stringList_[i].c_str();
-    		uint32_t size = stringList_[i].size();
-			writeVarint(size);
-			writeBuffer(cstr, size);
+            uint32_t size = stringList_[i].size();
+            
+            //Replace rewritable strings
+            if (size > 2 && cstr[0] == 0x1B && cstr[1] == 0x1A)
+            {
+                rewrittenStrings += 1;
+                //Encode int to short unicode
+                uint32_t enc = rewrittenStrings;
+                std::wstring indexed = L"";
+                do
+                {
+                    indexed += wchar_t(enc & 0xffff);
+                    enc = enc >> 16;
+                } while (enc > 0);
+                
+                std::string encoded = utfconv.to_bytes(indexed);
+                cstr = (char*)encoded.c_str();
+                size = encoded.size();
+            }
+            writeVarint(size);
+            writeBuffer(cstr, size);
     	}
     	PyObject* bufferedString = PycStringIO->cgetvalue(buffered);
 		size_t bufferedSize = PyString_Size(bufferedString);

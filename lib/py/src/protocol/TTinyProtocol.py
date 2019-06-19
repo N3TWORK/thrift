@@ -26,8 +26,11 @@ __all__ = ['TTinyProtocol', 'TTinyProtocolFactory']
 
 class TTinyProtocol(TCompactProtocol):
 	"""Tiny implementation of the Thrift protocol driver."""
-	
+
 	structDepth = 0
+
+	def getStringsTable(self):
+		return self.__strings_array
 
 	def writeStructBegin(self, name):
 		# Begin accumulating strings and hide our true protocol
@@ -42,18 +45,34 @@ class TTinyProtocol(TCompactProtocol):
 		TCompactProtocol.writeStructBegin(self, name)
 
 	def writeStructEnd(self):
+		def encodeIntToUnicode(i):
+			result = u''
+			while True:
+				result += unichr(i & 0xFFFF)
+				i >>= 16
+				if i == 0:
+					break
+
+			return result.encode('utf-8')
 		# Call super
 		TCompactProtocol.writeStructEnd(self)
-	
+
 		# If this is the end of the struct, output the strings table.
 		self.structDepth -= 1
 		if self.structDepth == 0:
 			fake_trans = self.trans
 			self.trans = self.__real_trans
 			self._TCompactProtocol__writeVarint(len(self.__strings_array))
+			rewritten = 0
 			for s in self.__strings_array:
-				self._TCompactProtocol__writeSize(len(s))
-				self.trans.write(s)
+				if s.startswith('\x1b\x1a'):
+					rewritten += 1
+					rs = encodeIntToUnicode(rewritten)
+					self._TCompactProtocol__writeSize(len(rs))
+					self.trans.write(rs)
+				else:
+					self._TCompactProtocol__writeSize(len(s))
+					self.trans.write(s)
 			self.trans.write(fake_trans.getvalue())
 
 	def writeString(self, s):
@@ -74,16 +93,16 @@ class TTinyProtocol(TCompactProtocol):
 				s = self.trans.readAll(len)
 				self.__strings_array.append(s)
 		self.structDepth += 1
-		
+
 		# Call super
 		TCompactProtocol.readStructBegin(self)
-		
+
 	def readStructEnd(self):
 		self.structDepth -= 1
-		
+
 		# Call super
 		TCompactProtocol.readStructEnd(self)
-		
+
 	def readString(self):
 		i = self._TCompactProtocol__readVarint()
 		return self.__strings_array[i]
