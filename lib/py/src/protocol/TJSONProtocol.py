@@ -53,6 +53,11 @@ ESCAPE_CHAR_VALS = {
     '\n': '\\n',
     '\r': '\\r',
     '\t': '\\t',
+#N3TWORK Additions
+    '\x1b': '',
+    '\x1a': '',
+#end N3TWORK Additions
+
     # '/': '\\/',
 }
 ESCAPE_CHARS = {
