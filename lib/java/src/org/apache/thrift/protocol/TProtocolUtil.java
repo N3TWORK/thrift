@@ -99,7 +99,9 @@ public class TProtocolUtil {
         break;
 
       case TType.STRING:
-        prot.readBinary();
+        // N3TWORK_CHANGES
+        prot.readString();
+        // N3TWORK_CHANGES
         break;
 
       case TType.STRUCT:
