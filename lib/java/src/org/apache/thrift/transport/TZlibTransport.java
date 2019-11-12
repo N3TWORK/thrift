@@ -32,15 +32,16 @@ import java.util.zip.InflaterInputStream;
 public class TZlibTransport extends TIOStreamTransport {
 
     private TTransport transport_ = null;
+    private final int compression_;
+    private Inflater inflater = null;
+    private Deflater deflater = null;
 
     public static class Factory extends TTransportFactory {
         public Factory() {
         }
 
         @Override
-        public TTransport getTransport(TTransport base) {
-            return new TZlibTransport(base);
-        }
+        public TTransport getTransport(TTransport base) { return new TZlibTransport(base); }
     }
 
     /**
@@ -58,8 +59,7 @@ public class TZlibTransport extends TIOStreamTransport {
      */
     public TZlibTransport(TTransport transport, int compressionLevel) {
         transport_ = transport;
-        inputStream_ = new InflaterInputStream(new TTransportInputStream(transport_), new Inflater());
-        outputStream_ = new DeflaterOutputStream(new TTransportOutputStream(transport_), new Deflater(compressionLevel, false), true);
+        compression_ = compressionLevel;
     }
 
     @Override
@@ -75,9 +75,33 @@ public class TZlibTransport extends TIOStreamTransport {
     @Override
     public void close() {
         super.close();
+        if (null != deflater) {
+            deflater.end();
+        }
+        if (null != inflater) {
+            inflater.end();
+        }
         if (transport_.isOpen()) {
             transport_.close();
         }
+    }
+
+    @Override
+    public int read(byte[] buf, int off, int len) throws TTransportException {
+        if (inputStream_ == null) {
+            inflater = new Inflater(true);
+            inputStream_ = new InflaterInputStream(new TTransportInputStream(transport_), inflater);
+        }
+        return super.read(buf, off, len);
+    }
+
+    @Override
+    public void write(byte[] buf, int off, int len) throws TTransportException {
+        if (outputStream_ == null) {
+            deflater = new Deflater(compression_, true);
+            outputStream_ = new DeflaterOutputStream(new TTransportOutputStream(transport_), deflater, true);
+        }
+        super.write(buf, off, len);
     }
 }
 
