@@ -283,6 +283,7 @@ void t_csharp_generator::init_generator() {
   pverbose("- hashcode ... %s\n", (hashcode_ ? "ON" : "off"));
   pverbose("- serialize .. %s\n", (serialize_ ? "ON" : "off"));
   pverbose("- wcf ........ %s\n", (wcf_ ? "ON" : "off"));
+  pverbose("- leg ........ %s\n", (leg_ ? "ON" : "off"));
 }
 
 std::string t_csharp_generator::normalize_name(std::string name) {
@@ -3244,5 +3245,6 @@ THRIFT_REGISTER_GENERATOR(
     "    serial:          Add serialization support to generated classes.\n"
     "    nullable:        Use nullable types for properties.\n"
     "    hashcode:        Generate a hashcode and equals implementation for classes.\n"
-    "    union:           Use new union typing, which includes a static read function for union "
-    "types.\n")
+    "    union:           Use new union typing, which includes a static read function for union types\n"
+    "    leg:             (n3 Legendary flag) include `DataMember(Index = THRIFT_ID)` annotations\n"
+)
