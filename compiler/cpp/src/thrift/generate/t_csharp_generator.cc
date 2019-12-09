@@ -91,6 +91,9 @@ public:
 
     out_dir_base_ = "gen-csharp";
   }
+
+  virtual std::string indent_str() const { return "\t"; }
+  
   void init_generator();
   void close_generator();
 
@@ -125,13 +128,15 @@ public:
                              t_type* type,
                              t_const_value* value);
 
+  void generate_csharp_typedef_definition(std::ostream& out, t_typedef* ttypedef);
+
   void generate_csharp_struct(t_struct* tstruct, bool is_exception);
   void generate_csharp_union(t_struct* tunion);
   void generate_csharp_struct_definition(std::ostream& out,
-                                         t_struct* tstruct,
-                                         bool is_xception = false,
-                                         bool in_class = false,
-                                         bool is_result = false);
+										 t_struct* tstruct,
+										 bool is_xception = false,
+										 bool in_class = false,
+										 bool is_result = false);
   void generate_csharp_union_definition(std::ostream& out, t_struct* tunion);
   void generate_csharp_union_class(std::ostream& out, t_struct* tunion, t_field* tfield);
   void generate_csharp_wcffault(std::ostream& out, t_struct* tstruct);
@@ -209,6 +214,7 @@ public:
   std::string argument_list(t_struct* tstruct);
   std::string type_to_enum(t_type* ttype);
   std::string prop_name(t_field* tfield, bool suppress_mapping = false);
+  std::string prop_access(t_field* tfield, bool suppress_mapping = false);
   std::string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
@@ -436,8 +442,50 @@ string t_csharp_generator::csharp_thrift_usings() {
 
 void t_csharp_generator::close_generator() {
 }
+
 void t_csharp_generator::generate_typedef(t_typedef* ttypedef) {
-  (void)ttypedef;
+  string name = namespace_dir_ + "/" + (ttypedef->get_name()) + ".cs";
+  ofstream_with_content_based_conditional_update f;
+
+  f.open(name.c_str());
+
+  f << autogen_comment() << csharp_type_usings() << csharp_thrift_usings() << endl;
+
+  generate_csharp_typedef_definition(f, ttypedef);
+
+  f.close();
+}
+
+void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_typedef* ttypedef) {
+  start_csharp_namespace(out);
+
+  t_type* t = ttypedef;
+  while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
+
+  string nm = normalize_name(ttypedef->get_name());
+  
+  indent(out) << "[Serializable]" << endl;
+  indent(out) << "public partial struct " << nm << " : IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
+  scope_up(out);
+
+  indent(out) << "public " << type_name(t) << " Value;" << endl;
+  out << '\n';
+  
+  indent(out) << "public " << nm << "(" << type_name(t) << " value) { Value = value; }" << endl;
+  indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
+  indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
+  indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
+  indent(out) << "public override string ToString() => Value.ToString();\n";
+
+  indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
+  indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
+
+  indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
+  
+  scope_down(out);
+  out << endl;
+
+  end_csharp_namespace(out);
 }
 
 void t_csharp_generator::generate_enum(t_enum* tenum) {
@@ -1034,7 +1082,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       if (is_required)
       {
         if (null_allowed) {
-          indent(out) << "if (" << prop_name((*f_iter)) << " == null)" << endl;
+          indent(out) << "if (" << prop_access((*f_iter)) << " == null)" << endl;
           indent_up();
           out << indent()
               << "throw new TProtocolException(TProtocolException.INVALID_DATA, "
@@ -1046,11 +1094,11 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       else
       {
         if (nullable_ && !has_default) {
-            indent(out) << "if (" << prop_name((*f_iter)) << " != null) {" << endl;
+            indent(out) << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
         }
         else if (null_allowed) {
           out << indent()
-              << "if (" << prop_name((*f_iter)) << " != null && __isset."
+              << "if (" << prop_access((*f_iter)) << " != null && __isset."
               << normalize_name((*f_iter)->get_name()) << ") {"
               << endl;
         }
@@ -1123,7 +1171,7 @@ void t_csharp_generator::generate_csharp_struct_result_writer(ostream& out, t_st
 
       bool null_allowed = !nullable_ && type_can_be_null((*f_iter)->get_type());
       if (null_allowed) {
-        indent(out) << "if (" << prop_name(*f_iter) << " != null) {" << endl;
+        indent(out) << "if (" << prop_access(*f_iter) << " != null) {" << endl;
         indent_up();
       }
 
@@ -2479,8 +2527,10 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
                                                     string prefix,
                                                     bool is_propertyless) {
   t_type* type = tfield->get_type();
+  bool is_typedef = false;
   while (type->is_typedef()) {
     type = ((t_typedef*)type)->get_type();
+    is_typedef = true;
   }
 
   if (type->is_void()) {
@@ -2488,6 +2538,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
   }
 
   string name = prefix + (is_propertyless ? "" : prop_name(tfield));
+  if(is_typedef) name += ".Value";
 
   if (type->is_struct() || type->is_xception()) {
     generate_deserialize_struct(out, (t_struct*)type, name);
@@ -2663,7 +2714,7 @@ void t_csharp_generator::generate_serialize_field(ostream& out,
     type = ((t_typedef*)type)->get_type();
   }
 
-  string name = prefix + (is_propertyless ? "" : prop_name(tfield));
+  string name = prefix + (is_propertyless ? "" : prop_access(tfield));
 
   if (type->is_void()) {
     throw "CANNOT GENERATE SERIALIZE CODE FOR void TYPE: " + name;
@@ -2813,6 +2864,7 @@ void t_csharp_generator::generate_property(ostream& out,
                                            bool generateIsset) {
   generate_csharp_property(out, tfield, isPublic, generateIsset, "_");
 }
+
 void t_csharp_generator::generate_csharp_property(ostream& out,
                                                   t_field* tfield,
                                                   bool isPublic,
@@ -2826,49 +2878,9 @@ void t_csharp_generator::generate_csharp_property(ostream& out,
   }
   bool has_default = field_has_default(tfield);
   bool is_required = field_is_required(tfield);
-  if ((nullable_ && !has_default) || (is_required)) {
-    indent(out) << (isPublic ? "public " : "private ")
-                << type_name(tfield->get_type(), false, false, true, is_required) << " "
-                << prop_name(tfield) << " { get; set; }" << endl;
-  } else {
-    indent(out) << (isPublic ? "public " : "private ")
-                << type_name(tfield->get_type(), false, false, true) << " " << prop_name(tfield)
-                << endl;
-    scope_up(out);
-    indent(out) << "get" << endl;
-    scope_up(out);
-    bool use_nullable = false;
-    if (nullable_) {
-      t_type* ttype = tfield->get_type();
-      while (ttype->is_typedef()) {
-        ttype = ((t_typedef*)ttype)->get_type();
-      }
-      if (ttype->is_base_type()) {
-        use_nullable = ((t_base_type*)ttype)->get_base() != t_base_type::TYPE_STRING;
-      } else if (ttype->is_enum()) {
-        use_nullable = true;
-      }
-    }
-    indent(out) << "return " << fieldPrefix + tfield->get_name() << ";" << endl;
-    scope_down(out);
-    indent(out) << "set" << endl;
-    scope_up(out);
-    if (use_nullable) {
-      if (generateIsset) {
-        indent(out) << "__isset." << normalize_name(tfield->get_name()) << " = value.HasValue;"
-                    << endl;
-      }
-      indent(out) << "if (value.HasValue) this." << fieldPrefix + tfield->get_name()
-                  << " = value.Value;" << endl;
-    } else {
-      if (generateIsset) {
-        indent(out) << "__isset." << normalize_name(tfield->get_name()) << " = true;" << endl;
-      }
-      indent(out) << "this." << fieldPrefix + tfield->get_name() << " = value;" << endl;
-    }
-    scope_down(out);
-    scope_down(out);
-  }
+  indent(out) << (isPublic ? "public " : "private ")
+			  << type_name(tfield->get_type(), false, false, true, is_required) << " "
+			  << prop_name(tfield) << ";" << endl;
   out << endl;
 }
 
@@ -2989,15 +3001,18 @@ std::string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping
   return name;
 }
 
+std::string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
+  string nm = prop_name(tfield, suppress_mapping);
+  if(tfield->get_type()->is_typedef()) return nm + ".Value";
+  return nm;
+}
+
 string t_csharp_generator::type_name(t_type* ttype,
                                      bool in_container,
                                      bool in_init,
                                      bool in_param,
                                      bool is_required) {
   (void)in_init;
-  while (ttype->is_typedef()) {
-    ttype = ((t_typedef*)ttype)->get_type();
-  }
 
   if (ttype->is_base_type()) {
     return base_type_name((t_base_type*)ttype, in_container, in_param, is_required);
@@ -3246,5 +3261,5 @@ THRIFT_REGISTER_GENERATOR(
     "    nullable:        Use nullable types for properties.\n"
     "    hashcode:        Generate a hashcode and equals implementation for classes.\n"
     "    union:           Use new union typing, which includes a static read function for union types\n"
-    "    leg:             (n3 Legendary flag) include `DataMember(Index = THRIFT_ID)` annotations\n"
+    "    leg:             (n3) include `DataMember(Index = THRIFT_ID)` annotations\n"
 )
