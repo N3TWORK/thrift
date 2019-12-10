@@ -946,7 +946,7 @@ void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* t
     }
 
     indent_down();
-    out << indent() << "} else { " << endl << indent() << "  TProtocolUtil.Skip(iprot, field.Type);"
+    out << indent() << "} else { " << endl << indent() << indent_str() << "TProtocolUtil.Skip(iprot, field.Type);"
         << endl << indent() << "}" << endl << indent() << "break;" << endl;
     indent_down();
   }
