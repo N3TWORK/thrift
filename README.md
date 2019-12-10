@@ -8,6 +8,15 @@ C#:
 	- no getter/setters; just raw var variables
 	- no SILVERLIGHT support
 	
+== Building ==
+
+```
+cd compiler/cpp
+mkdir cmake-build && cd cmake-build
+cmake ..
+make
+```
+	
 == Restrictions ==
 
 - No __isset for recording if optional, non-nullable types were provided
@@ -29,12 +38,3 @@ typedef FooId BarId
 - service definitions is broken (needs to be updated for __isset)
 
 - GetHashCode() / Equals() might be broken (untested with __isset)
-	
-== Building ==
-
-```
-cd compiler/cpp
-mkdir cmake-build && cd cmake-build
-cmake ..
-make
-```
