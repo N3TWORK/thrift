@@ -749,9 +749,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   generate_csharp_doc(out, tstruct);
   prepare_member_name_mapping(tstruct);
 
-  indent(out) << "#if !SILVERLIGHT" << endl;
   indent(out) << "[Serializable]" << endl;
-  indent(out) << "#endif" << endl;
   if ((serialize_ || wcf_) && !is_exception) {
     indent(out) << "[DataContract(Namespace=\"" << wcf_namespace_ << "\")]"
                 << endl; // do not make exception classes directly WCF serializable, we provide a
@@ -774,15 +772,6 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
 
-  // make private members with public Properties
-  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    // if the field is requied, then we use auto-properties
-    if (!field_is_required((*m_iter)) && (!nullable_ || field_has_default((*m_iter)))) {
-      indent(out) << "private " << declare_field(*m_iter, false, "_") << endl;
-    }
-  }
-  out << endl;
-
   bool has_non_required_fields = false;
   bool has_non_required_default_value_fields = false;
   bool has_required_fields = false;
@@ -800,62 +789,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
       has_non_required_fields = true;
     }
   }
-
-  bool generate_isset = (nullable_ && has_non_required_default_value_fields)
-                        || (!nullable_ && has_non_required_fields);
-  if (generate_isset) {
-    out << endl;
-    if (serialize_ || wcf_) {
-      out << indent() << "[XmlIgnore] // XmlSerializer" << endl << indent()
-          << "[DataMember(Order = 1)]  // XmlObjectSerializer, DataContractJsonSerializer, etc."
-          << endl;
-    }
-    out << indent() << "public Isset __isset;" << endl << indent() << "#if !SILVERLIGHT" << endl
-        << indent() << "[Serializable]" << endl << indent() << "#endif" << endl;
-    if (serialize_ || wcf_) {
-      indent(out) << "[DataContract]" << endl;
-    }
-    indent(out) << "public struct Isset {" << endl;
-    indent_up();
-    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-      bool is_required = field_is_required((*m_iter));
-      bool has_default = field_has_default((*m_iter));
-      // if it is required, don't need Isset for that variable
-      // if it is not required, if it has a default value, we need to generate Isset
-      // if we are not nullable, then we generate Isset
-      if (!is_required && (!nullable_ || has_default)) {
-        if (serialize_ || wcf_) {
-          indent(out) << "[DataMember]" << endl;
-        }
-        indent(out) << "public bool " << normalize_name((*m_iter)->get_name()) << ";" << endl;
-      }
-    }
-
-    indent_down();
-    indent(out) << "}" << endl << endl;
-
-    if (generate_isset && (serialize_ || wcf_)) {
-      indent(out) << "#region XmlSerializer support" << endl << endl;
-
-      for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-        bool is_required = field_is_required((*m_iter));
-        bool has_default = field_has_default((*m_iter));
-        // if it is required, don't need Isset for that variable
-        // if it is not required, if it has a default value, we need to generate Isset
-        // if we are not nullable, then we generate Isset
-        if (!is_required && (!nullable_ || has_default)) {
-          indent(out) << "public bool ShouldSerialize" << prop_name((*m_iter)) << "()" << endl;
-          indent(out) << "{" << endl;
-          indent_up();
-          indent(out) << "return __isset." << normalize_name((*m_iter)->get_name()) << ";" << endl;
-          indent_down();
-          indent(out) << "}" << endl << endl;
-        }
-      }
-
-      indent(out) << "#endregion XmlSerializer support" << endl << endl;
-    }
-  }
+  out << '\n';
 
   // We always want a default, no argument constructor for Reading
   indent(out) << "public " << normalize_name(tstruct->get_name()) << "() {" << endl;
@@ -868,17 +802,14 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     }
     if ((*m_iter)->get_value() != NULL) {
       if (field_is_required((*m_iter))) {
-        print_const_value(out, "this." + prop_name(*m_iter), t, (*m_iter)->get_value(), true, true);
+        print_const_value(out, "this." + prop_access(*m_iter), t, (*m_iter)->get_value(), true, true);
       } else {
-        print_const_value(out,
-                          "this._" + (*m_iter)->get_name(),
+        print_const_value(out, 
+                          "this." + prop_access(*m_iter),
                           t,
                           (*m_iter)->get_value(),
                           true,
                           true);
-        // Optionals with defaults are marked set
-        indent(out) << "this.__isset." << normalize_name((*m_iter)->get_name()) << " = true;"
-                    << endl;
       }
     }
   }
@@ -1098,12 +1029,11 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
         }
         else if (null_allowed) {
           out << indent()
-              << "if (" << prop_access((*f_iter)) << " != null && __isset."
-              << normalize_name((*f_iter)->get_name()) << ") {"
+              << "if (" << prop_access((*f_iter)) << " != null) {"
               << endl;
         }
         else {
-           indent(out) << "if (__isset." << normalize_name((*f_iter)->get_name()) << ") {" << endl;
+           indent(out) << "{" << endl;
         }
         indent_up();
       }
@@ -1165,7 +1095,7 @@ void t_csharp_generator::generate_csharp_struct_result_writer(ostream& out, t_st
       if (nullable_) {
         out << "(this." << prop_name((*f_iter)) << " != null) {" << endl;
       } else {
-        out << "(this.__isset." << normalize_name((*f_iter)->get_name()) << ") {" << endl;
+        out << "{" << endl;
       }
       indent_up();
 
@@ -1238,11 +1168,10 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
     } else if (!is_required) {
       bool null_allowed = type_can_be_null((*f_iter)->get_type());
       if (null_allowed) {
-        indent(out) << "if (" << prop_name((*f_iter)) << " != null && __isset."
-                    << normalize_name((*f_iter)->get_name()) << ") {" << endl;
+        indent(out) << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
         indent_up();
       } else {
-        indent(out) << "if (__isset." << normalize_name((*f_iter)->get_name()) << ") {" << endl;
+        indent(out) << "{" << endl;
         indent_up();
       }
     }
@@ -1416,9 +1345,7 @@ void t_csharp_generator::generate_csharp_struct_equals(ostream& out, t_struct* t
       indent(out) << "&& ";
     }
     if (!field_is_required((*f_iter)) && !(nullable_ && !field_has_default((*f_iter)))) {
-      out << "((__isset." << normalize_name((*f_iter)->get_name()) << " == other.__isset."
-          << normalize_name((*f_iter)->get_name()) << ") && ((!__isset."
-          << normalize_name((*f_iter)->get_name()) << ") || (";
+      out << "((";
     }
     t_type* ttype = (*f_iter)->get_type();
     if (ttype->is_container() || ttype->is_binary()) {
@@ -1461,7 +1388,7 @@ void t_csharp_generator::generate_csharp_struct_hashcode(ostream& out, t_struct*
     } else if (nullable_) {
       out << "(" << prop_name((*f_iter)) << " == null ? 0 : ";
     } else {
-      out << "(!__isset." << normalize_name((*f_iter)->get_name()) << " ? 0 : ";
+      out << "(";
     }
     if (ttype->is_container()) {
       out << "(TCollections.GetHashCode(" << prop_name((*f_iter)) << "))";
@@ -2881,7 +2808,6 @@ void t_csharp_generator::generate_csharp_property(ostream& out,
   indent(out) << (isPublic ? "public " : "private ")
 			  << type_name(tfield->get_type(), false, false, true, is_required) << " "
 			  << prop_name(tfield) << ";" << endl;
-  out << endl;
 }
 
 std::string t_csharp_generator::make_valid_csharp_identifier(std::string const& fromName) {
