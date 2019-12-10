@@ -47,18 +47,18 @@ static const string endl = "\n"; // avoid ostream << std::endl flushes (EK: omg)
 
 struct member_mapping_scope {
   void* scope_member;
-  std::map<std::string, std::string> mapping_table;
+  std::map<string, string> mapping_table;
 };
 
 class t_csharp_generator : public t_oop_generator {
 public:
   t_csharp_generator(t_program* program,
-                     const std::map<std::string, std::string>& parsed_options,
-                     const std::string& option_string)
+                     const std::map<string, string>& parsed_options,
+                     const string& option_string)
     : t_oop_generator(program) {
     (void)option_string;
 
-    std::map<std::string, std::string>::const_iterator iter;
+    std::map<string, string>::const_iterator iter;
 
     async_ = false;
     nullable_ = false;
@@ -93,7 +93,7 @@ public:
     out_dir_base_ = "gen-csharp";
   }
 
-  virtual std::string indent_str() const { return "\t"; }
+  virtual string indent_str() const { return "\t"; }
   
   void init_generator();
   void close_generator();
@@ -111,21 +111,21 @@ public:
                                 t_field* tfield,
                                 bool isPublic,
                                 bool includeIsset = true,
-                                std::string fieldPrefix = "");
+                                string fieldPrefix = "");
   bool print_const_value(std::ostream& out,
-                         std::string name,
+                         string name,
                          t_type* type,
                          t_const_value* value,
                          bool in_static,
                          bool defval = false,
                          bool needtype = false);
-  std::string render_const_value(std::ostream& out,
-                                 std::string name,
+  string render_const_value(std::ostream& out,
+                                 string name,
                                  t_type* type,
                                  t_const_value* value);
   void print_const_constructor(std::ostream& out, std::vector<t_const*> consts);
   void print_const_def_value(std::ostream& out,
-                             std::string name,
+                             string name,
                              t_type* type,
                              t_const_value* value);
 
@@ -167,26 +167,26 @@ public:
 
   void generate_deserialize_field(std::ostream& out,
                                   t_field* tfield,
-                                  std::string prefix = "",
+                                  string prefix = "",
                                   bool is_propertyless = false);
-  void generate_deserialize_struct(std::ostream& out, t_struct* tstruct, std::string prefix = "");
-  void generate_deserialize_container(std::ostream& out, t_type* ttype, std::string prefix = "");
-  void generate_deserialize_set_element(std::ostream& out, t_set* tset, std::string prefix = "");
-  void generate_deserialize_map_element(std::ostream& out, t_map* tmap, std::string prefix = "");
-  void generate_deserialize_list_element(std::ostream& out, t_list* list, std::string prefix = "");
+  void generate_deserialize_struct(std::ostream& out, t_struct* tstruct, string prefix = "");
+  void generate_deserialize_container(std::ostream& out, t_type* ttype, string prefix = "");
+  void generate_deserialize_set_element(std::ostream& out, t_set* tset, string prefix = "");
+  void generate_deserialize_map_element(std::ostream& out, t_map* tmap, string prefix = "");
+  void generate_deserialize_list_element(std::ostream& out, t_list* list, string prefix = "");
   void generate_serialize_field(std::ostream& out,
                                 t_field* tfield,
-                                std::string prefix = "",
+                                string prefix = "",
                                 bool is_element = false,
                                 bool is_propertyless = false);
-  void generate_serialize_struct(std::ostream& out, t_struct* tstruct, std::string prefix = "");
-  void generate_serialize_container(std::ostream& out, t_type* ttype, std::string prefix = "");
+  void generate_serialize_struct(std::ostream& out, t_struct* tstruct, string prefix = "");
+  void generate_serialize_container(std::ostream& out, t_type* ttype, string prefix = "");
   void generate_serialize_map_element(std::ostream& out,
                                       t_map* tmap,
-                                      std::string iter,
-                                      std::string map);
-  void generate_serialize_set_element(std::ostream& out, t_set* tmap, std::string iter);
-  void generate_serialize_list_element(std::ostream& out, t_list* tlist, std::string iter);
+                                      string iter,
+                                      string map);
+  void generate_serialize_set_element(std::ostream& out, t_set* tmap, string iter);
+  void generate_serialize_list_element(std::ostream& out, t_list* tlist, string iter);
 
   void generate_csharp_doc(std::ostream& out, t_field* field);
   void generate_csharp_doc(std::ostream& out, t_doc* tdoc);
@@ -196,28 +196,41 @@ public:
   void start_csharp_namespace(std::ostream& out);
   void end_csharp_namespace(std::ostream& out);
 
-  std::string csharp_type_usings();
-  std::string csharp_thrift_usings();
+  string csharp_type_usings();
+  string csharp_thrift_usings();
 
-  std::string type_name(t_type* ttype,
+  bool is_primitive_or_container(t_type* t) {
+    return t->is_base_type() || t->is_map() || t->is_set() || t->is_list() || t->is_enum();
+  }
+  bool field_is_ref(t_field* f) { 
+     if(f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
+     if(field_is_required(f) || field_has_default(f)) return false;
+     return !is_primitive_or_container(unwrap_typedefs(f->get_type()));
+  }
+  t_type* unwrap_typedefs(t_type* t) {
+    while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
+    return t;
+  }
+  string field_type_name(t_field* f);
+  string type_name(t_type* ttype,
                         bool in_countainer = false,
                         bool in_init = false,
                         bool in_param = false,
                         bool is_required = false);
-  std::string base_type_name(t_base_type* tbase,
+  string base_type_name(t_base_type* tbase,
                              bool in_container = false,
                              bool in_param = false,
                              bool is_required = false);
-  std::string declare_field(t_field* tfield, bool init = false, std::string prefix = "");
-  std::string function_signature_async_begin(t_function* tfunction, std::string prefix = "");
-  std::string function_signature_async_end(t_function* tfunction, std::string prefix = "");
-  std::string function_signature_async(t_function* tfunction, std::string prefix = "");
-  std::string function_signature(t_function* tfunction, std::string prefix = "");
-  std::string argument_list(t_struct* tstruct);
-  std::string type_to_enum(t_type* ttype);
-  std::string prop_name(t_field* tfield, bool suppress_mapping = false); // field name
-  std::string prop_access(t_field* tfield, bool suppress_mapping = false); // field value access -- "<name>.Value" for enums/ptrs
-  std::string get_enum_class_name(t_type* type);
+  string declare_field(t_field* tfield, bool init = false, string prefix = "");
+  string function_signature_async_begin(t_function* tfunction, string prefix = "");
+  string function_signature_async_end(t_function* tfunction, string prefix = "");
+  string function_signature_async(t_function* tfunction, string prefix = "");
+  string function_signature(t_function* tfunction, string prefix = "");
+  string argument_list(t_struct* tstruct);
+  string type_to_enum(t_type* ttype);
+  string prop_name(t_field* tfield, bool suppress_mapping = false); // field name
+  string prop_access(t_field* tfield, bool suppress_mapping = false); // field value access -- "<name>.Value" for enums/ptrs
+  string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
 
@@ -233,10 +246,15 @@ public:
            || ttype->is_string();
   }
 
+  bool field_can_be_null(t_field *f) {
+    if(!field_is_required(f)) return true;
+    return type_can_be_null(f->get_type());
+  }
+
 private:
-  std::string namespace_name_;
+  string namespace_name_;
   ofstream_with_content_based_conditional_update f_service_;
-  std::string namespace_dir_;
+  string namespace_dir_;
   bool async_;
   bool nullable_;
   bool union_;
@@ -244,14 +262,14 @@ private:
   bool serialize_;
   bool wcf_;
   bool leg_;
-  std::string wcf_namespace_;
+  string wcf_namespace_;
 
-  std::map<std::string, int> csharp_keywords;
+  std::map<string, int> csharp_keywords;
   std::vector<member_mapping_scope>  member_mapping_scopes;
 
   void init_keywords();
-  std::string normalize_name(std::string name);
-  std::string make_valid_csharp_identifier(std::string const& fromName);
+  string normalize_name(string name);
+  string make_valid_csharp_identifier(string const& fromName);
   void prepare_member_name_mapping(t_struct* tstruct);
   void prepare_member_name_mapping(void* scope,
                                    const vector<t_field*>& members,
@@ -295,7 +313,7 @@ void t_csharp_generator::init_generator() {
   pverbose("- leg ........ %s\n", (leg_ ? "ON" : "off"));
 }
 
-std::string t_csharp_generator::normalize_name(std::string name) {
+string t_csharp_generator::normalize_name(string name) {
   string tmp(name);
   std::transform(tmp.begin(), tmp.end(), tmp.begin(), static_cast<int (*)(int)>(std::tolower));
 
@@ -669,7 +687,7 @@ bool t_csharp_generator::print_const_value(std::ostream& out,
   return need_static_construction;
 }
 
-std::string t_csharp_generator::render_const_value(ostream& out,
+string t_csharp_generator::render_const_value(ostream& out,
                                                    string name,
                                                    t_type* type,
                                                    t_const_value* value) {
@@ -991,6 +1009,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       bool is_required = field_is_required((*f_iter));
       bool has_default = field_has_default((*f_iter));
       bool null_allowed = type_can_be_null((*f_iter)->get_type());
+      if(null_allowed) std::cerr << "null allowed: " << (*f_iter)->get_name() << endl;
 
       if (is_required)
       {
@@ -1007,11 +1026,10 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       else
       {
         if (null_allowed) {
-          out << indent()
-              << "if (" << prop_access((*f_iter)) << " != null) {"
-              << endl;
-        }
-        else {
+          out << indent() << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
+        } else if(field_is_ref(*f_iter)) {
+          out << indent() << "if (" << prop_name(*f_iter) << " != null) {" << endl;
+        } else {
            indent(out) << "{" << endl;
         }
         indent_up();
@@ -2446,6 +2464,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
   string name = prefix + (is_propertyless ? "" : prop_access(tfield));
 
   if (type->is_struct() || type->is_xception()) {
+    if(field_is_ref(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
     generate_deserialize_struct(out, (t_struct*)type, name);
   } else if (type->is_container()) {
     generate_deserialize_container(out, type, name);
@@ -2775,7 +2794,7 @@ void t_csharp_generator::generate_csharp_property(ostream& out,
                                                   t_field* tfield,
                                                   bool isPublic,
                                                   bool generateIsset,
-                                                  std::string fieldPrefix) {
+                                                  string fieldPrefix) {
   if (leg_ && isPublic) {
     indent(out) << "[DataMember(Index = " << tfield->get_key() << ")]" << endl;
   }
@@ -2784,13 +2803,11 @@ void t_csharp_generator::generate_csharp_property(ostream& out,
   }
   bool has_default = field_has_default(tfield);
   bool is_required = field_is_required(tfield);
-  indent(out) << (isPublic ? "public " : "private ")
-			  << type_name(tfield->get_type(), false, false, true, is_required) << " "
-			  << prop_name(tfield) << ";" << endl;
+  indent(out) << (isPublic ? "public " : "private ") << field_type_name(tfield) << " " << prop_name(tfield) << ";" << endl;
 }
 
-std::string t_csharp_generator::make_valid_csharp_identifier(std::string const& fromName) {
-  std::string str = fromName;
+string t_csharp_generator::make_valid_csharp_identifier(string const& fromName) {
+  string str = fromName;
   if (str.empty()) {
     return str;
   }
@@ -2859,7 +2876,7 @@ void t_csharp_generator::prepare_member_name_mapping(void* scope,
   // current C# generator policy:
   // - prop names are always rendered with an Uppercase first letter
   // - struct names are used as given
-  std::set<std::string> used_member_names;
+  std::set<string> used_member_names;
   vector<t_field*>::const_iterator iter;
 
   // prevent name conflicts with struct (CS0542 error)
@@ -2896,7 +2913,7 @@ void t_csharp_generator::prepare_member_name_mapping(void* scope,
   }
 }
 
-std::string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping) {
+string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping) {
   string name(tfield->get_name());
   if (suppress_mapping) {
     name[0] = toupper(name[0]);
@@ -2906,9 +2923,20 @@ std::string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping
   return name;
 }
 
-std::string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
+string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
   string nm = prop_name(tfield, suppress_mapping);
-  if(tfield->get_type()->is_typedef()) return nm + ".Value";
+  if(field_is_ref(tfield)) {
+    std::cerr << "field_is_ref: " + prop_name(tfield, false) << endl;
+    nm = nm + ".Value";
+  }
+  if(tfield->get_type()->is_typedef()) nm = nm + ".Value";
+  return nm;
+}
+
+string t_csharp_generator::field_type_name(t_field* f) {
+  bool is_required = field_is_required(f);
+  string nm = type_name(f->get_type(), false, false, true, is_required);
+  if(field_is_ref(f)) nm = "Ref<" + nm + ">";
   return nm;
 }
 
@@ -2977,7 +3005,7 @@ string t_csharp_generator::base_type_name(t_base_type* tbase,
   }
 }
 
-string t_csharp_generator::declare_field(t_field* tfield, bool init, std::string prefix) {
+string t_csharp_generator::declare_field(t_field* tfield, bool init, string prefix) {
   string result = type_name(tfield->get_type()) + " " + prefix + tfield->get_name();
   if (init) {
     t_type* ttype = tfield->get_type();
@@ -3132,7 +3160,7 @@ void t_csharp_generator::generate_csharp_doc(ostream& out, t_function* tfunction
       t_field* p = *p_iter;
       ps << "\n<param name=\"" << p->get_name() << "\">";
       if (p->has_doc()) {
-        std::string str = p->get_doc();
+        string str = p->get_doc();
         str.erase(std::remove(str.begin(), str.end(), '\n'),
                   str.end()); // remove the newlines that appear from the parser
         ps << str;
@@ -3147,7 +3175,7 @@ void t_csharp_generator::generate_csharp_doc(ostream& out, t_function* tfunction
   }
 }
 
-std::string t_csharp_generator::get_enum_class_name(t_type* type) {
+string t_csharp_generator::get_enum_class_name(t_type* type) {
   string package = "";
   t_program* program = type->get_program();
   if (program != NULL && program != program_) {

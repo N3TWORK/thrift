@@ -25,8 +25,10 @@ make
 	- We could extend to only write if non-default-value
 	
 - nullable option is not supported
+
+- TException types are not supported (TODO: allow types to be classes w/ annotation)
 	
-== Bugs / Untested ==
+== Bugs / Untested / Broken ==
 
 - typedefs of typedefs is probably broken (i.e, something like this:
 
