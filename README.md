@@ -24,6 +24,8 @@ make
 - Thus, optional, non-nullable values are always written when saving thrift
 	- We could extend to only write if non-default-value
 	
+- nullable option is not supported
+	
 == Bugs / Untested ==
 
 - typedefs of typedefs is probably broken (i.e, something like this:

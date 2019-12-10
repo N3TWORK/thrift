@@ -43,7 +43,7 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
-static const string endl = "\n"; // avoid ostream << std::endl flushes
+static const string endl = "\n"; // avoid ostream << std::endl flushes (EK: omg)
 
 struct member_mapping_scope {
   void* scope_member;
@@ -71,6 +71,7 @@ public:
       if( iter->first.compare("async") == 0) {
         async_ = true;
       } else if( iter->first.compare("nullable") == 0) {
+        throw "not supported";
         nullable_ = true;
       } else if( iter->first.compare("hashcode") == 0) {
         hashcode_ = true;
@@ -137,6 +138,7 @@ public:
 										 bool is_xception = false,
 										 bool in_class = false,
 										 bool is_result = false);
+  void generate_csharp_struct_set_defaults_body(ostream& out, t_struct* tstruct);
   void generate_csharp_union_definition(std::ostream& out, t_struct* tunion);
   void generate_csharp_union_class(std::ostream& out, t_struct* tunion, t_field* tfield);
   void generate_csharp_wcffault(std::ostream& out, t_struct* tstruct);
@@ -213,8 +215,8 @@ public:
   std::string function_signature(t_function* tfunction, std::string prefix = "");
   std::string argument_list(t_struct* tstruct);
   std::string type_to_enum(t_type* ttype);
-  std::string prop_name(t_field* tfield, bool suppress_mapping = false);
-  std::string prop_access(t_field* tfield, bool suppress_mapping = false);
+  std::string prop_name(t_field* tfield, bool suppress_mapping = false); // field name
+  std::string prop_access(t_field* tfield, bool suppress_mapping = false); // field value access -- "<name>.Value" for enums/ptrs
   std::string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
@@ -225,8 +227,9 @@ public:
     while (ttype->is_typedef()) {
       ttype = ((t_typedef*)ttype)->get_type();
     }
+    if (ttype->is_struct()) return false; // we generate c# "struct" for structs, so can't be null
 
-    return ttype->is_container() || ttype->is_struct() || ttype->is_xception()
+    return ttype->is_container() || ttype->is_xception()
            || ttype->is_string();
   }
 
@@ -757,7 +760,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
 
-  indent(out) << "public " << (is_final ? "sealed " : "") << "partial class "
+  indent(out) << "public " << (is_final ? "sealed " : "") << "partial struct "
               << normalize_name(tstruct->get_name()) << " : ";
 
   if (is_exception) {
@@ -791,57 +794,13 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   out << '\n';
 
-  // We always want a default, no argument constructor for Reading
-  indent(out) << "public " << normalize_name(tstruct->get_name()) << "() {" << endl;
+  // special method to set default values (can't do in constructor because structs can't have construtors)
+  indent(out) << "// init fields w/ non-zero default values\n";
+  indent(out) << "public void SetThriftDefaults() {\n";
   indent_up();
-
-  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    t_type* t = (*m_iter)->get_type();
-    while (t->is_typedef()) {
-      t = ((t_typedef*)t)->get_type();
-    }
-    if ((*m_iter)->get_value() != NULL) {
-      if (field_is_required((*m_iter))) {
-        print_const_value(out, "this." + prop_access(*m_iter), t, (*m_iter)->get_value(), true, true);
-      } else {
-        print_const_value(out, 
-                          "this." + prop_access(*m_iter),
-                          t,
-                          (*m_iter)->get_value(),
-                          true,
-                          true);
-      }
-    }
-  }
+  generate_csharp_struct_set_defaults_body(out, tstruct);
   indent_down();
   indent(out) << "}" << endl << endl;
-
-  if (has_required_fields) {
-    indent(out) << "public " << tstruct->get_name() << "(";
-    bool first = true;
-    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-      if (field_is_required((*m_iter))) {
-        if (first) {
-          first = false;
-        } else {
-          out << ", ";
-        }
-        out << type_name((*m_iter)->get_type()) << " " << normalize_name((*m_iter)->get_name());
-      }
-    }
-    out << ") : this() {" << endl;
-    indent_up();
-
-    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-      if (field_is_required((*m_iter))) {
-        indent(out) << "this." << prop_name((*m_iter)) << " = " << normalize_name((*m_iter)->get_name()) << ";"
-                    << endl;
-      }
-    }
-
-    indent_down();
-    indent(out) << "}" << endl << endl;
-  }
 
   generate_csharp_struct_reader(out, tstruct);
   if (is_result) {
@@ -865,6 +824,29 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   cleanup_member_name_mapping(tstruct);
   if (!in_class) {
     end_csharp_namespace(out);
+  }
+}
+
+void t_csharp_generator::generate_csharp_struct_set_defaults_body(ostream& out, t_struct* tstruct) {
+  const vector<t_field*>& members = tstruct->get_members();
+  vector<t_field*>::const_iterator m_iter;
+  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+    t_type* t = (*m_iter)->get_type();
+    while (t->is_typedef()) {
+      t = ((t_typedef*)t)->get_type();
+    }
+    if ((*m_iter)->get_value() != NULL) {
+      if (field_is_required((*m_iter))) {
+        print_const_value(out, "this." + prop_access(*m_iter), t, (*m_iter)->get_value(), true, true);
+      } else {
+        print_const_value(out, 
+                          "this." + prop_access(*m_iter),
+                          t,
+                          (*m_iter)->get_value(),
+                          true,
+                          true);
+      }
+    }
   }
 }
 
@@ -1024,10 +1006,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       }
       else
       {
-        if (nullable_ && !has_default) {
-            indent(out) << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
-        }
-        else if (null_allowed) {
+        if (null_allowed) {
           out << indent()
               << "if (" << prop_access((*f_iter)) << " != null) {"
               << endl;
@@ -1187,7 +1166,7 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
     }
 
     t_type* ttype = (*f_iter)->get_type();
-    if (ttype->is_xception() || ttype->is_struct()) {
+    if (type_can_be_null((*f_iter)->get_type())) {
       indent(out) << "__sb.Append(" << prop_name((*f_iter))
                   << "== null ? \"<null>\" : " << prop_name((*f_iter)) << ".ToString());" << endl;
     } else {
@@ -2464,8 +2443,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
     throw "CANNOT GENERATE DESERIALIZE CODE FOR void TYPE: " + prefix + tfield->get_name();
   }
 
-  string name = prefix + (is_propertyless ? "" : prop_name(tfield));
-  if(is_typedef) name += ".Value";
+  string name = prefix + (is_propertyless ? "" : prop_access(tfield));
 
   if (type->is_struct() || type->is_xception()) {
     generate_deserialize_struct(out, (t_struct*)type, name);
@@ -2531,8 +2509,9 @@ void t_csharp_generator::generate_deserialize_struct(ostream& out,
   if (union_ && tstruct->is_union()) {
     out << indent() << prefix << " = " << type_name(tstruct) << ".Read(iprot);" << endl;
   } else {
-    out << indent() << prefix << " = new " << type_name(tstruct) << "();" << endl << indent()
-        << prefix << ".Read(iprot);" << endl;
+    out << indent() << prefix << " = new " << type_name(tstruct) << "();" << endl;
+    out << indent() << prefix << ".SetThriftDefaults();" << endl;
+    out << indent() << prefix << ".Read(iprot);" << endl;
   }
 }
 
