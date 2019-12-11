@@ -32,22 +32,22 @@ namespace Thrift.Protocol
 {
     public class TCompactProtocol : TProtocol
     {
-        private static TStruct ANONYMOUS_STRUCT = new TStruct("");
-        private static TField TSTOP = new TField("", TType.Stop, (short)0);
+        protected static TStruct ANONYMOUS_STRUCT = new TStruct("");
+        protected static TField TSTOP = new TField("", TType.Stop, (short)0);
 
-        private static byte[] ttypeToCompactType = new byte[16];
+        protected static byte[] ttypeToCompactType = new byte[16];
 
-        private const byte PROTOCOL_ID = 0x82;
-        private const byte VERSION = 1;
-        private const byte VERSION_MASK = 0x1f; // 0001 1111
-        private const byte TYPE_MASK = 0xE0; // 1110 0000
-        private const byte TYPE_BITS = 0x07; // 0000 0111
-        private const int TYPE_SHIFT_AMOUNT = 5;
+        protected const byte PROTOCOL_ID = 0x82;
+        protected const byte VERSION = 1;
+        protected const byte VERSION_MASK = 0x1f; // 0001 1111
+        protected const byte TYPE_MASK = 0xE0; // 1110 0000
+        protected const byte TYPE_BITS = 0x07; // 0000 0111
+        protected const int TYPE_SHIFT_AMOUNT = 5;
 
         /// <summary>
         /// All of the on-wire type codes.
         /// </summary>
-        private static class Types
+        protected static class Types
         {
             public const byte STOP = 0x00;
             public const byte BOOLEAN_TRUE = 0x01;
@@ -68,21 +68,21 @@ namespace Thrift.Protocol
         /// Used to keep track of the last field for the current and previous structs,
         /// so we can do the delta stuff.
         /// </summary>
-        private Stack<short> lastField_ = new Stack<short>(15);
+        protected Stack<short> lastField_ = new Stack<short>(15);
 
-        private short lastFieldId_ = 0;
+        protected short lastFieldId_ = 0;
 
         /// <summary>
         /// If we encounter a boolean field begin, save the TField here so it can
         /// have the value incorporated.
         /// </summary>
-        private Nullable<TField> booleanField_;
+        protected Nullable<TField> booleanField_;
 
         /// <summary>
         /// If we Read a field header, and it's a boolean field, save the boolean
         /// value here so that ReadBool can use it.
         /// </summary>
-        private Nullable<Boolean> boolValue_;
+        protected Nullable<Boolean> boolValue_;
 
 
         #region CompactProtocol Factory
@@ -128,9 +128,9 @@ namespace Thrift.Protocol
         /// Writes a byte without any possibility of all that field header nonsense.
         /// Used internally by other writing methods that know they need to Write a byte.
         /// </summary>
-        private byte[] byteDirectBuffer = new byte[1];
+        protected byte[] byteDirectBuffer = new byte[1];
 
-        private void WriteByteDirect(byte b)
+        protected void WriteByteDirect(byte b)
         {
             byteDirectBuffer[0] = b;
             trans.Write(byteDirectBuffer);
@@ -139,7 +139,7 @@ namespace Thrift.Protocol
         /// <summary>
         /// Writes a byte without any possibility of all that field header nonsense.
         /// </summary>
-        private void WriteByteDirect(int n)
+        protected void WriteByteDirect(int n)
         {
             WriteByteDirect((byte)n);
         }
@@ -150,7 +150,7 @@ namespace Thrift.Protocol
         /// </summary>
         byte[] i32buf = new byte[5];
 
-        private void WriteVarint32(uint n)
+        protected void WriteVarint32(uint n)
         {
             int idx = 0;
             while (true)
@@ -229,7 +229,7 @@ namespace Thrift.Protocol
         /// 'type override' of the type header. This is used specifically in the
         /// boolean field case.
         /// </summary>
-        private void WriteFieldBeginInternal(TField field, byte typeOverride)
+        protected void WriteFieldBeginInternal(TField field, byte typeOverride)
         {
             // short lastField = lastField_.Pop();
 
@@ -374,7 +374,7 @@ namespace Thrift.Protocol
             WriteBinary(bin, 0, bin.Length);
         }
 
-        private void WriteBinary(byte[] buf, int offset, int length)
+        protected void WriteBinary(byte[] buf, int offset, int length)
         {
             WriteVarint32((uint)length);
             trans.Write(buf, offset, length);
@@ -416,7 +416,7 @@ namespace Thrift.Protocol
         /// Write an i64 as a varint. Results in 1-10 bytes on the wire.
         /// </summary>
         byte[] varint64out = new byte[10];
-        private void WriteVarint64(ulong n)
+        protected void WriteVarint64(ulong n)
         {
             int idx = 0;
             while (true)
@@ -439,7 +439,7 @@ namespace Thrift.Protocol
         /// Convert l into a zigzag long. This allows negative numbers to be
         /// represented compactly as a varint.
         /// </summary>
-        private ulong longToZigzag(long n)
+        protected ulong longToZigzag(long n)
         {
             return (ulong)(n << 1) ^ (ulong)(n >> 63);
         }
@@ -448,7 +448,7 @@ namespace Thrift.Protocol
         /// Convert n into a zigzag int. This allows negative numbers to be
         /// represented compactly as a varint.
         /// </summary>
-        private uint intToZigZag(int n)
+        protected uint intToZigZag(int n)
         {
             return (uint)(n << 1) ^ (uint)(n >> 31);
         }
@@ -457,7 +457,7 @@ namespace Thrift.Protocol
         /// Convert a long into little-endian bytes in buf starting at off and going
         /// until off+7.
         /// </summary>
-        private void fixedLongToBytes(long n, byte[] buf, int off)
+        protected void fixedLongToBytes(long n, byte[] buf, int off)
         {
             buf[off + 0] = (byte)(n & 0xff);
             buf[off + 1] = (byte)((n >> 8) & 0xff);
@@ -690,7 +690,7 @@ namespace Thrift.Protocol
         /// <summary>
         /// Read a byte[] of a known length from the wire.
         /// </summary>
-        private byte[] ReadBinary(int length)
+        protected byte[] ReadBinary(int length)
         {
             if (length == 0) return new byte[0];
 
@@ -717,7 +717,7 @@ namespace Thrift.Protocol
         /// Read an i32 from the wire as a varint. The MSB of each byte is set
         /// if there is another byte to follow. This can Read up to 5 bytes.
         /// </summary>
-        private uint ReadVarint32()
+        protected uint ReadVarint32()
         {
             uint result = 0;
             int shift = 0;
@@ -735,7 +735,7 @@ namespace Thrift.Protocol
         /// Read an i64 from the wire as a proper varint. The MSB of each byte is set
         /// if there is another byte to follow. This can Read up to 10 bytes.
         /// </summary>
-        private ulong ReadVarint64()
+        protected ulong ReadVarint64()
         {
             int shift = 0;
             ulong result = 0;
@@ -759,7 +759,7 @@ namespace Thrift.Protocol
         /// <summary>
         /// Convert from zigzag int to int.
         /// </summary>
-        private int zigzagToInt(uint n)
+        protected int zigzagToInt(uint n)
         {
             return (int)(n >> 1) ^ (-(int)(n & 1));
         }
@@ -767,7 +767,7 @@ namespace Thrift.Protocol
         /// <summary>
         /// Convert from zigzag long to long.
         /// </summary>
-        private long zigzagToLong(ulong n)
+        protected long zigzagToLong(ulong n)
         {
             return (long)(n >> 1) ^ (-(long)(n & 1));
         }
@@ -777,7 +777,7 @@ namespace Thrift.Protocol
         /// otherwise they'll default to ints, and when you shift an int left 56 bits,
         /// you just get a messed up int.
         /// </summary>
-        private long bytesToLong(byte[] bytes)
+        protected long bytesToLong(byte[] bytes)
         {
             return
               ((bytes[7] & 0xffL) << 56) |
@@ -794,7 +794,7 @@ namespace Thrift.Protocol
         // type testing and converting
         //
 
-        private Boolean isBoolType(byte b)
+        protected Boolean isBoolType(byte b)
         {
             int lowerNibble = b & 0x0f;
             return lowerNibble == Types.BOOLEAN_TRUE || lowerNibble == Types.BOOLEAN_FALSE;
@@ -804,7 +804,7 @@ namespace Thrift.Protocol
         /// Given a TCompactProtocol.Types constant, convert it to its corresponding
         /// TType value.
         /// </summary>
-        private TType getTType(byte type)
+        protected TType getTType(byte type)
         {
             switch ((byte)(type & 0x0f))
             {
@@ -841,7 +841,7 @@ namespace Thrift.Protocol
         /// <summary>
         /// Given a TType value, find the appropriate TCompactProtocol.Types constant.
         /// </summary>
-        private byte getCompactType(TType ttype)
+        protected byte getCompactType(TType ttype)
         {
             return ttypeToCompactType[(int)ttype];
         }
