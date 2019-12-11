@@ -199,14 +199,22 @@ public:
   string csharp_type_usings();
   string csharp_thrift_usings();
 
+  // is t a thrift struct that will be represented as a c# struct (i.e.,, value type, not ref type class)? 
+  bool is_cs_struct(t_type* t) {
+    return t->is_struct() && t->annotations_.count("cs.struct") > 0;
+  }
+
   bool is_primitive_or_container(t_type* t) {
     return t->is_base_type() || t->is_map() || t->is_set() || t->is_list() || t->is_enum();
   }
-  bool field_is_ref(t_field* f) { 
+  
+  // does field wrap a value type in a Ref<> class?
+  bool field_is_ref_wrapped(t_field* f) { 
      if(f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
      if(field_is_required(f) || field_has_default(f)) return false;
-     return !is_primitive_or_container(unwrap_typedef(f->get_type()));
+     return is_cs_struct(f->get_type());
   }
+  
   bool really_is_typedef_(t_type* t) {
     // for some reason I don't understand, sometimes we get a type that's not a typedef but says it is. try to detect that by telling if the names of the base type and the typedef are the same. (EK)
     return t->is_typedef() && t->get_name() != unwrap_typedef(t)->get_name();
@@ -241,17 +249,11 @@ public:
   string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
-
   bool field_is_required(t_field* tfield) { return tfield->get_req() == t_field::T_REQUIRED; }
-
   bool type_can_be_null(t_type* ttype) {
-    while (ttype->is_typedef()) {
-      ttype = ((t_typedef*)ttype)->get_type();
-    }
-    if (ttype->is_struct()) return false; // we generate c# "struct" for structs, so can't be null
-
-    return ttype->is_container() || ttype->is_xception()
-           || ttype->is_string();
+    ttype = unwrap_typedef(ttype);
+    if (ttype->is_struct()) return !is_cs_struct(ttype);
+    return ttype->is_container() || ttype->is_xception() || ttype->is_string();
   }
 
   bool field_can_be_null(t_field *f) {
@@ -786,8 +788,8 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
 
-  indent(out) << "public " << (is_final ? "sealed " : "") << "partial struct "
-              << normalize_name(tstruct->get_name()) << " : ";
+  string kind = is_cs_struct(tstruct) ? "struct" : "class";
+  indent(out) << "public " << (is_final ? "sealed " : "") << "partial " << kind << " " << normalize_name(tstruct->get_name()) << " : ";
 
   if (is_exception) {
     out << "TException, ";
@@ -1034,7 +1036,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       {
         if (null_allowed) {
           out << indent() << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
-        } else if(field_is_ref(*f_iter)) {
+        } else if(field_is_ref_wrapped(*f_iter)) {
           out << indent() << "if (" << prop_name(*f_iter) << " != null) {" << endl;
         } else {
            indent(out) << "{" << endl;
@@ -2471,7 +2473,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
   string name = prefix + (is_propertyless ? "" : prop_access(tfield));
 
   if (type->is_struct() || type->is_xception()) {
-    if(field_is_ref(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
+    if(field_is_ref_wrapped(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
     generate_deserialize_struct(out, (t_struct*)type, name);
   } else if (type->is_container()) {
     generate_deserialize_container(out, type, name);
@@ -2932,7 +2934,7 @@ string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping) {
 
 string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
   string nm = prop_name(tfield, suppress_mapping);
-  if(field_is_ref(tfield)) {
+  if(field_is_ref_wrapped(tfield)) {
     nm = nm + ".Value";
   }
   if(is_wrapped_typedef(tfield->get_type())) {
@@ -2944,7 +2946,7 @@ string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
 string t_csharp_generator::field_type_name(t_field* f) {
   bool is_required = field_is_required(f);
   string nm = type_name(f->get_type(), false, false, true, is_required);
-  if(field_is_ref(f)) nm = "Ref<" + nm + ">";
+  if(field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
 }
 

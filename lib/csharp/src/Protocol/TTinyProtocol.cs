@@ -81,7 +81,7 @@ namespace Thrift.Protocol
 				WriteVarint32 ((uint)stringList.Count);
 				foreach (var s in stringList)
 					WriteBinary (UTF8Encoding.UTF8.GetBytes (s));
-				var fullBytes = realStream.GetBuffer();
+				var fullBytes = realStream.GetBuffer(); // XXX(ek): shouldn't this be ToArray()?
 				trans.Write(fullBytes, 0, fullBytes.Length);
 			}
 		}

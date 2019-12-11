@@ -3,10 +3,12 @@ N3twork Triumph project branch of thrift compiler.
 Changes:
 
 C#:
-	- tab indents
-	- typedefs are represented to single-item structs
-	- no getter/setters; just raw var variables
-	- no SILVERLIGHT support
+	- typedefs generate single-item c# structs
+	- thrift structs can opt-in to be generated as c# structs (rather than classes) by using the "cs.struct" attribute
+		- an *optional* field referencing a c# struct will still have reference semantics, via wrapping the struct in a single-item "Ref" class
+	- no __isset generated for optional value types (why: less memory cost; in the rare case you need the functionality, can recreate manually by including explicit companion "isset" variable)
+	- tab indents instead of spaces (to match our coding conventions)
+	- various restrictions 
 	
 == Building ==
 
@@ -19,16 +21,14 @@ make
 	
 == Restrictions ==
 
-- No __isset for recording if optional, non-nullable types were provided
-
-- Thus, optional, non-nullable values are always written when saving thrift
-	- We could extend to only write if non-default-value
+- optional, non-nullable values are always written when saving thrift
+	- because we don't have isset
+	- we could effectively get this behavior back by only writing non-default values
+	- but we're not writing from c#, so we don't care
 	
-- nullable option is not supported
-
-- TException types are not supported (TODO: allow types to be classes w/ annotation)
+- "nullable", silverlight support dropped (why: implementation ease; we're not using the features)
 	
-== Bugs / Untested / Broken ==
+== Bugs / Untested ==
 
 - typedefs of typedefs is probably broken (i.e, something like this:
 
@@ -37,8 +37,8 @@ typedef string FooId
 typedef FooId BarId
 ```
 
-- typdefs of structs might be broken
-
 - service definitions is broken (needs to be updated for __isset)
 
-- GetHashCode() / Equals() might be broken (untested with __isset)
+- typdefs of structs is untested & probably broken
+
+- GetHashCode() / Equals() generation for structs might be broken (untested with __isset) (we're not using this though)
