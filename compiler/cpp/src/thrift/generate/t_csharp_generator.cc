@@ -205,9 +205,17 @@ public:
   bool field_is_ref(t_field* f) { 
      if(f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
      if(field_is_required(f) || field_has_default(f)) return false;
-     return !is_primitive_or_container(unwrap_typedefs(f->get_type()));
+     return !is_primitive_or_container(unwrap_typedef(f->get_type()));
   }
-  t_type* unwrap_typedefs(t_type* t) {
+  bool really_is_typedef_(t_type* t) {
+    // for some reason I don't understand, sometimes we get a type that's not a typedef but says it is. try to detect that by telling if the names of the base type and the typedef are the same. (EK)
+    return t->is_typedef() && t->get_name() != unwrap_typedef(t)->get_name();
+  }
+  // do we generate a wrapper struct for the given typedef?
+  bool is_wrapped_typedef(t_type* t) {
+    return really_is_typedef_(t);
+  } 
+  t_type* unwrap_typedef(t_type* t) {
     while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
     return t;
   }
@@ -1009,7 +1017,6 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       bool is_required = field_is_required((*f_iter));
       bool has_default = field_has_default((*f_iter));
       bool null_allowed = type_can_be_null((*f_iter)->get_type());
-      if(null_allowed) std::cerr << "null allowed: " << (*f_iter)->get_name() << endl;
 
       if (is_required)
       {
@@ -2926,10 +2933,11 @@ string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping) {
 string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
   string nm = prop_name(tfield, suppress_mapping);
   if(field_is_ref(tfield)) {
-    std::cerr << "field_is_ref: " + prop_name(tfield, false) << endl;
     nm = nm + ".Value";
   }
-  if(tfield->get_type()->is_typedef()) nm = nm + ".Value";
+  if(is_wrapped_typedef(tfield->get_type())) {
+    nm = nm + ".Value";
+  }
   return nm;
 }
 
