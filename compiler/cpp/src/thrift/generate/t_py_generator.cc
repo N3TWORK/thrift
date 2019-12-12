@@ -706,11 +706,13 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         indent(out) << "None,  # " << sorted_keys_pos << endl;
       }
 
-      indent(out) << "(" << (*m_iter)->get_key() << ", " << type_to_enum((*m_iter)->get_type())
+      t_type* t = (*m_iter)->get_type();
+      indent(out) << "(" << (*m_iter)->get_key() << ", " << type_to_enum(t)
                   << ", "
                   << "'" << (*m_iter)->get_name() << "'"
                   << ", " << type_to_spec_args((*m_iter)->get_type()) << ", "
                   << render_field_default_value(*m_iter) << ", "
+                  << (t->is_enum() ? type_name(t) : "None") << ", " // for enum fields, include name of enum class
                   << "),"
                   << "  # " << sorted_keys_pos << endl;
 

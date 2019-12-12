@@ -10,6 +10,9 @@ C#:
 	- tab indents instead of spaces (to match our coding conventions)
 	- various restrictions 
 	
+Python:
+	- Add an element to thrift_spec identifying the class of enum fields
+	
 == Building ==
 
 ```
