@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <iostream>
 
 // For program_name()
 #include "thrift/main.h"
@@ -344,6 +345,24 @@ public:
   void add_c_include(std::string path) { c_includes_.push_back(path); }
 
   const std::vector<std::string>& get_c_includes() { return c_includes_; }
+  
+  // Remove all types and fields that match any of the given annotations
+  void drop_annotations(const std::vector<std::string>& annotations) {
+    for(int i = 0; i < annotations.size(); i++) {
+      t_type_has_annotation pred;
+      pred.annotation = &annotations[i];
+      #define DROP(V) V.erase(std::remove_if(V.begin(), V.end(), pred), V.end())
+	  DROP(typedefs_);
+	  DROP(enums_);
+	  DROP(objects_);
+	  DROP(structs_);
+	  DROP(xceptions_);
+	  #undef DROP
+    }
+    for(int i = 0; i < objects_.size(); i++) objects_[i]->drop_annotations(annotations);
+    for(int i = 0; i < structs_.size(); i++) structs_[i]->drop_annotations(annotations);
+    for(int i = 0; i < xceptions_.size(); i++) xceptions_[i]->drop_annotations(annotations);
+  }
 
 private:
   // File path

@@ -157,6 +157,18 @@ public:
     return NULL;
   }
 
+  // remove all members that have any of the given annotations
+  void drop_annotations(const std::vector<std::string>& annotations) {
+    for(int i = 0; i < annotations.size(); i++) {
+      t_field_has_annotation pred;
+      pred.annotation = &annotations[i];
+      #define DROP(V) V.erase(std::remove_if(V.begin(), V.end(), pred), V.end())
+	  DROP(members_);
+	  DROP(members_in_id_order_);
+	  #undef DROP
+    }
+  }
+
 private:
   members_type members_;
   members_type members_in_id_order_;

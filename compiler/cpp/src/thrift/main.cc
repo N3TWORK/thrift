@@ -1087,6 +1087,7 @@ int main(int argc, char** argv) {
   }
 
   vector<string> generator_strings;
+  vector<string> drop_annotations; // list of annotations to be excluded from the program
   string old_thrift_include_path;
   string new_thrift_include_path;
   string old_input_file;
@@ -1132,6 +1133,13 @@ int main(int argc, char** argv) {
           usage();
         }
         generator_strings.push_back(arg);
+      } else if (strcmp(arg, "-drop") == 0) {
+        arg = argv[++i];
+        if (arg == NULL) {
+          fprintf(stderr, "Missing drop specification\n");
+          usage();
+        }
+        drop_annotations.push_back(arg);
       } else if (strcmp(arg, "-I") == 0) {
         // An argument of "-I\ asdf" is invalid and has unknown results
         arg = argv[++i];
@@ -1278,6 +1286,7 @@ int main(int argc, char** argv) {
 
     // Parse it!
     parse(program, NULL);
+    program->drop_annotations(drop_annotations);
 
     // The current path is not really relevant when we are doing generation.
     // Reset the variable to make warning messages clearer.
