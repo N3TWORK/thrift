@@ -850,6 +850,7 @@ FieldList:
     {
       pdebug("FieldList -> ");
       y_field_val = -1;
+
       $$ = new t_struct(g_program);
     }
 

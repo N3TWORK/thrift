@@ -9,6 +9,7 @@ Thrift syntax:
 	- Struct/enum/exception annotations come after the type name, not at the end of the type declaration:
 		- old: `struct Foo {...} (annotation)`
 		- new: `struct Foo (annotation) {...}`
+	- `insert "FNAME"` statement -- acts as though filename were copy-and-pasted in place of the insert statemnt (like C's #include)
 
 C#:
 	- typedefs generate single-item c# structs

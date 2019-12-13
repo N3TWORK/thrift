@@ -23,6 +23,12 @@
  * Tokenizes a thrift definition file.
  */
 
+
+/* the "incl" state is used for picking up the name
+ * of an insert file
+ */
+%x incl
+
 %{
 
 /* This is redundant with some of the flags in Makefile.am, but it works
@@ -76,6 +82,19 @@
 #include "thrift/thrifty.hh"
 #endif
 
+#define MAX_INSERT_DEPTH 10
+struct {
+  YY_BUFFER_STATE buffer;
+  std::string curdir;
+  std::string curpath;
+  int lineno;
+} insert_stack[MAX_INSERT_DEPTH];
+int insert_stack_ptr = 0;
+
+extern std::string g_curdir;
+extern std::string g_curpath;
+std::string directory_name(std::string filename);
+
 void integer_overflow(char* text) {
   yyerror("This integer is too big: \"%s\"\n", text);
   exit(1);
@@ -121,6 +140,52 @@ symbol        ([:;\,\{\}\(\)\=<>\[\]])
 literal_begin (['\"])
 
 %%
+
+insert             BEGIN(incl);
+
+<incl>[ \t]*      /* eat the whitespace */
+<incl>[^ \t\n]+   { /* got the include file name */
+    if (insert_stack_ptr >= MAX_INSERT_DEPTH ) {
+      yyerror("insert: nested too deeply" );
+      exit(1);
+    }
+    
+    insert_stack[insert_stack_ptr].buffer = YY_CURRENT_BUFFER;
+    insert_stack[insert_stack_ptr].curdir = g_curdir;
+    insert_stack[insert_stack_ptr].curpath = g_curpath;
+    insert_stack[insert_stack_ptr].lineno = yylineno;
+    insert_stack_ptr++;
+    
+    std::string fname = yytext;
+    if(fname[0] != '"' || fname[fname.size() - 1] != '"') {
+      yyerror("insert: filename must be quoted\n", fname.c_str());
+      exit( 1 );
+    }
+    fname = fname.substr(1, fname.size() - 2); // strip leading and trailing quotes (total hack...sorry)
+    yyin = fopen((g_curdir + "/" + fname).c_str(), "r");
+    if (!yyin) {
+      yyerror("insert: could not open file: %s\n", fname.c_str());
+      exit( 1 );
+    }
+    yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
+    g_curpath = fname;
+    g_curdir = directory_name(g_curpath);
+    yylineno = 1;
+    BEGIN(INITIAL);
+  }
+
+<<EOF>> {
+    if (insert_stack_ptr == 0) {
+      yyterminate();
+    } else {
+      insert_stack_ptr--;
+      yy_delete_buffer(YY_CURRENT_BUFFER);
+      yy_switch_to_buffer(insert_stack[insert_stack_ptr].buffer);
+      g_curdir = insert_stack[insert_stack_ptr].curdir;
+      g_curpath = insert_stack[insert_stack_ptr].curpath;
+      yylineno = insert_stack[insert_stack_ptr].lineno;
+    }
+  }
 
 {whitespace}         { /* do nothing */                 }
 {sillycomm}          { /* do nothing */                 }
