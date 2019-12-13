@@ -854,36 +854,36 @@ FieldList:
     }
 
 Field:
-  CaptureDocText FieldIdentifier FieldRequiredness FieldType FieldReference tok_identifier FieldValue XsdOptional XsdNillable XsdAttributes TypeAnnotations CommaOrSemicolonOptional
+  CaptureDocText FieldIdentifier FieldRequiredness TypeAnnotations FieldType FieldReference tok_identifier FieldValue XsdOptional XsdNillable XsdAttributes CommaOrSemicolonOptional
     {
       pdebug("tok_int_constant : Field -> FieldType tok_identifier");
       if ($2.auto_assigned) {
-        pwarning(1, "No field key specified for %s, resulting protocol may have conflicts or not be backwards compatible!\n", $6);
+        pwarning(1, "No field key specified for %s, resulting protocol may have conflicts or not be backwards compatible!\n", $8);
         if (g_strict >= 192) {
           yyerror("Implicit field keys are deprecated and not allowed with -strict");
           exit(1);
         }
       }
-      validate_simple_identifier($6);
-      $$ = new t_field($4, $6, $2.value);
-      $$->set_reference($5);
+      validate_simple_identifier($7);
+      $$ = new t_field($5, $7, $2.value);
+      $$->set_reference($6);
       $$->set_req($3);
-      if ($7 != NULL) {
-        g_scope->resolve_const_value($7, $4);
-        validate_field_value($$, $7);
-        $$->set_value($7);
+      if ($8 != NULL) {
+        g_scope->resolve_const_value($8, $5);
+        validate_field_value($$, $8);
+        $$->set_value($8);
       }
-      $$->set_xsd_optional($8);
-      $$->set_xsd_nillable($9);
+      $$->set_xsd_optional($9);
+      $$->set_xsd_nillable($10);
       if ($1 != NULL) {
         $$->set_doc($1);
       }
-      if ($10 != NULL) {
-        $$->set_xsd_attrs($10);
-      }
       if ($11 != NULL) {
-        $$->annotations_ = $11->annotations_;
-        delete $11;
+        $$->set_xsd_attrs($11);
+      }
+      if ($4 != NULL) {
+        $$->annotations_ = $4->annotations_;
+        delete $4;
       }
     }
 
