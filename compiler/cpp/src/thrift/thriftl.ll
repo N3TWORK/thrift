@@ -162,14 +162,15 @@ insert             BEGIN(incl);
       exit( 1 );
     }
     fname = fname.substr(1, fname.size() - 2); // strip leading and trailing quotes (total hack...sorry)
-    yyin = fopen((g_curdir + "/" + fname).c_str(), "r");
+    fname = g_curdir + "/" + fname;
+    yyin = fopen(fname.c_str(), "r");
     if (!yyin) {
-      yyerror("insert: could not open file: %s\n", fname.c_str());
+      yyerror("insert %s: file not found (absolute path: %s)\n", yytext, (g_curdir + "/" + fname).c_str());
       exit( 1 );
     }
     yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
     g_curpath = fname;
-    g_curdir = directory_name(g_curpath);
+    g_curdir = directory_name(fname);
     yylineno = 1;
     BEGIN(INITIAL);
   }
