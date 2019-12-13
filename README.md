@@ -2,6 +2,14 @@ N3twork Triumph project branch of thrift compiler.
 
 Changes:
 
+Thrift syntax:
+	- Field annotations come before the type name, not at end of declaration
+		- old: `1: required int foo (annotation)`
+		- new: `1: required (annotation) int foo`
+	- Struct/enum/exception annotations come after the type name, not at the end of the type declaration:
+		- old: `struct Foo {...} (annotation)`
+		- new: `struct Foo (annotation) {...}`
+
 C#:
 	- typedefs generate single-item c# structs
 	- thrift structs can opt-in to be generated as c# structs (rather than classes) by using the "cs.struct" attribute

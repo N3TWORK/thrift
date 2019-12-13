@@ -448,15 +448,15 @@ Typedef:
     }
 
 Enum:
-  tok_enum tok_identifier '{' EnumDefList '}' TypeAnnotations
+  tok_enum tok_identifier TypeAnnotations '{' EnumDefList '}'
     {
       pdebug("Enum -> tok_enum tok_identifier { EnumDefList }");
-      $$ = $4;
+      $$ = $5;
       validate_simple_identifier( $2);
       $$->set_name($2);
-      if ($6 != NULL) {
-        $$->annotations_ = $6->annotations_;
-        delete $6;
+      if ($3 != NULL) {
+        $$->annotations_ = $3->annotations_;
+        delete $3;
       }
 
       // make constants for all the enum values
@@ -673,17 +673,17 @@ StructHead:
     }
 
 Struct:
-  StructHead tok_identifier XsdAll '{' FieldList '}' TypeAnnotations
+  StructHead tok_identifier XsdAll TypeAnnotations '{' FieldList '}'
     {
       pdebug("Struct -> tok_struct tok_identifier { FieldList }");
       validate_simple_identifier( $2);
-      $5->set_xsd_all($3);
-      $5->set_union($1 == struct_is_union);
-      $$ = $5;
+      $6->set_xsd_all($3);
+      $6->set_union($1 == struct_is_union);
+      $$ = $6;
       $$->set_name($2);
-      if ($7 != NULL) {
-        $$->annotations_ = $7->annotations_;
-        delete $7;
+      if ($4 != NULL) {
+        $$->annotations_ = $4->annotations_;
+        delete $4;
       }
     }
 
@@ -728,16 +728,16 @@ XsdAttributes:
     }
 
 Xception:
-  tok_xception tok_identifier '{' FieldList '}' TypeAnnotations
+  tok_xception tok_identifier TypeAnnotations '{' FieldList '}'
     {
       pdebug("Xception -> tok_xception tok_identifier { FieldList }");
       validate_simple_identifier( $2);
-      $4->set_name($2);
-      $4->set_xception(true);
-      $$ = $4;
-      if ($6 != NULL) {
-        $$->annotations_ = $6->annotations_;
-        delete $6;
+      $5->set_name($2);
+      $5->set_xception(true);
+      $$ = $5;
+      if ($3 != NULL) {
+        $$->annotations_ = $3->annotations_;
+        delete $3;
       }
     }
 

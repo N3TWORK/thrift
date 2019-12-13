@@ -29,7 +29,7 @@
  * ignore typedefs and just use the underlying type directly, though in C++
  * the symbolic naming can be quite useful for code clarity.
  *
- * n3/tri: in c# we'll create a wrapping struct class, for type-safety, when TODO option is passed.
+ * n3: c# we create a wrapping struct class, for type-safety/code clarity
  *
  */
 class t_typedef : public t_type {
