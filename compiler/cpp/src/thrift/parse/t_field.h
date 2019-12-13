@@ -103,7 +103,7 @@ public:
     }
   };
 
-    std::map<std::string, std::string> annotations_;
+  std::map<std::string, std::string> annotations_;
 
   bool get_reference() { return reference_; }
 

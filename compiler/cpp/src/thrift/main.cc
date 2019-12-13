@@ -689,6 +689,7 @@ void help() {
   fprintf(stderr, "  -v[erbose]  Verbose mode\n");
   fprintf(stderr, "  -r[ecurse]  Also generate included files\n");
   fprintf(stderr, "  -debug      Parse debug trace to stdout\n");
+  fprintf(stderr, "  -debug      Parse debug trace to stdout\n");
   fprintf(stderr,
           "  --allow-neg-keys  Allow negative field keys (Used to "
           "preserve protocol\n");
@@ -698,6 +699,8 @@ void help() {
   fprintf(stderr, "                STR has the form language[:key1=val1[,key2[,key3=val3]]].\n");
   fprintf(stderr, "                Keys and values are options passed to the generator.\n");
   fprintf(stderr, "                Many options will not require values.\n");
+  fprintf(stderr, " -drop ANNOTATION   drop fields and type w/ the given annotation (may be passed multiple times)\n");
+  fprintf(stderr, " -loc-index FILE    write n3 loc index to FILE\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Options related to audit operation\n");
   fprintf(stderr, "   --audit OldFile   Old Thrift file to be audited with 'file'\n");
@@ -1067,6 +1070,8 @@ void audit(t_program* new_program,
   compare_consts(new_program->get_consts(), old_program->get_consts());
 }
 
+#include "locindex.hh"
+
 /**
  * Parse it up.. then spit it back out, in pretty much every language. Alright
  * not that many languages, but the cool ones that we care about.
@@ -1091,6 +1096,7 @@ int main(int argc, char** argv) {
   string old_thrift_include_path;
   string new_thrift_include_path;
   string old_input_file;
+  string locindex;
 
   // Set the current path to a dummy value to make warning messages clearer.
   g_curpath = "arguments";
@@ -1136,10 +1142,21 @@ int main(int argc, char** argv) {
       } else if (strcmp(arg, "-drop") == 0) {
         arg = argv[++i];
         if (arg == NULL) {
-          fprintf(stderr, "Missing drop specification\n");
+          fprintf(stderr, "-drop missing argument\n");
           usage();
         }
         drop_annotations.push_back(arg);
+      } else if (strcmp(arg, "-loc-index") == 0) {
+        if(locindex != "") {
+          fprintf(stderr, "-loc-index passed multiple times");
+          usage();
+        }
+        arg = argv[++i];
+        if (arg == NULL) {
+          fprintf(stderr, "-loc-index missing argument\n");
+          usage();
+        }
+        locindex = arg;
       } else if (strcmp(arg, "-I") == 0) {
         // An argument of "-I\ asdf" is invalid and has unknown results
         arg = argv[++i];
@@ -1297,6 +1314,10 @@ int main(int argc, char** argv) {
 
     // Generate it!
     generate(program, generator_strings);
+
+	// write loc index if requested
+	if(locindex != "") write_loc_index(locindex);
+    
     delete program;
   }
 
