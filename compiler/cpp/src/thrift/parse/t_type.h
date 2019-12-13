@@ -106,12 +106,4 @@ struct t_annotation {
   std::string val;
 };
 
-// helper function object: does type have given annotation?
-struct t_type_has_annotation {
-  const std::string *annotation;
-  bool operator()(t_type *t) const { 
-    return t->annotations_.find(*annotation) != t->annotations_.end();
-  }
-};
-
 #endif

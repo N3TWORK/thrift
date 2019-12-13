@@ -52,6 +52,7 @@ add_library(parse STATIC ${parse_SOURCES})
 set(compiler_core
     src/thrift/common.cc
     src/thrift/generate/t_generator.cc
+    src/thrift/parse/t_struct.cc
     src/thrift/parse/t_typedef.cc
     src/thrift/parse/parse.cc
     ${CMAKE_CURRENT_BINARY_DIR}/thrift/version.h

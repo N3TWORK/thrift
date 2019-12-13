@@ -131,12 +131,4 @@ struct t_field_id {
   bool auto_assigned;
 };
 
-// helper function object: does field have given annotation?
-struct t_field_has_annotation {
-  const std::string *annotation;
-  bool operator()(t_field *f) const { 
-    return f->annotations_.find(*annotation) != f->annotations_.end();
-  }
-};
-
 #endif

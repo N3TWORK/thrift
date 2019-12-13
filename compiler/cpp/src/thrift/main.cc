@@ -700,6 +700,7 @@ void help() {
   fprintf(stderr, "                Keys and values are options passed to the generator.\n");
   fprintf(stderr, "                Many options will not require values.\n");
   fprintf(stderr, " -drop ANNOTATION   drop fields and type w/ the given annotation (may be passed multiple times)\n");
+  fprintf(stderr, " -undrop ANNOTATION  don't drop fields w/ this annotation, even if they match a -drop\n");
   fprintf(stderr, " -loc-index FILE    write n3 loc index to FILE\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Options related to audit operation\n");
@@ -1092,7 +1093,7 @@ int main(int argc, char** argv) {
   }
 
   vector<string> generator_strings;
-  vector<string> drop_annotations; // list of annotations to be excluded from the program
+  vector<string> drops, undrops;
   string old_thrift_include_path;
   string new_thrift_include_path;
   string old_input_file;
@@ -1145,7 +1146,14 @@ int main(int argc, char** argv) {
           fprintf(stderr, "-drop missing argument\n");
           usage();
         }
-        drop_annotations.push_back(arg);
+        drops.push_back(arg);
+      } else if (strcmp(arg, "-undrop") == 0) {
+        arg = argv[++i];
+        if (arg == NULL) {
+          fprintf(stderr, "-drop missing argument\n");
+          usage();
+        }
+        undrops.push_back(arg);
       } else if (strcmp(arg, "-loc-index") == 0) {
         if(locindex != "") {
           fprintf(stderr, "-loc-index passed multiple times");
@@ -1285,6 +1293,8 @@ int main(int argc, char** argv) {
 
     // Instance of the global parse tree
     t_program* program = new t_program(input_file);
+    program->drops_ = drops;
+    program->undrops_ = undrops;
     if (out_path.size()) {
       program->set_out_path(out_path, out_path_is_absolute);
     }
@@ -1303,7 +1313,6 @@ int main(int argc, char** argv) {
 
     // Parse it!
     parse(program, NULL);
-    program->drop_annotations(drop_annotations);
 
     // The current path is not really relevant when we are doing generation.
     // Reset the variable to make warning messages clearer.

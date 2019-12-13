@@ -108,24 +108,7 @@ public:
 
   bool get_xsd_all() const { return xsd_all_; }
 
-  bool append(t_field* elem) {
-    typedef members_type::iterator iter_type;
-    std::pair<iter_type, iter_type> bounds = std::equal_range(members_in_id_order_.begin(),
-                                                              members_in_id_order_.end(),
-                                                              elem,
-                                                              t_field::key_compare());
-    if (bounds.first != bounds.second) {
-      return false;
-    }
-    // returns false when there is a conflict of field names
-    if (get_field_by_name(elem->get_name()) != NULL) {
-      return false;
-    }
-    members_.push_back(elem);
-    members_in_id_order_.insert(bounds.second, elem);
-    validate_union_member(elem);
-    return true;
-  }
+  bool append(t_field* elem);
 
   const members_type& get_members() const { return members_; }
 
@@ -155,18 +138,6 @@ public:
       }
     }
     return NULL;
-  }
-
-  // remove all members that have any of the given annotations
-  void drop_annotations(const std::vector<std::string>& annotations) {
-    for(int i = 0; i < annotations.size(); i++) {
-      t_field_has_annotation pred;
-      pred.annotation = &annotations[i];
-      #define DROP(V) V.erase(std::remove_if(V.begin(), V.end(), pred), V.end())
-	  DROP(members_);
-	  DROP(members_in_id_order_);
-	  #undef DROP
-    }
   }
 
 private:

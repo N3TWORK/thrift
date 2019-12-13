@@ -73,6 +73,9 @@ public:
     }
   }
 
+  std::vector<std::string> drops_; // list of annotations. fields and types w/ any of these annotations will not be added to the program UNLESS...
+  std::vector<std::string> undrops_; // ...they contain one of these annotations;
+
   // Path accessor
   const std::string& get_path() const { return path_; }
 
@@ -102,18 +105,29 @@ public:
   const std::map<std::string, std::string>& get_namespaces() const { return namespaces_; }
 
   // Program elements
-  void add_typedef(t_typedef* td) { typedefs_.push_back(td); }
-  void add_enum(t_enum* te) { enums_.push_back(te); }
+  void add_typedef(t_typedef* td) { 
+    if(should_drop(td)) return;
+    typedefs_.push_back(td); 
+  }
+  void add_enum(t_enum* te) {
+    if(should_drop(te)) return;
+    enums_.push_back(te); 
+  }
   void add_const(t_const* tc) { consts_.push_back(tc); }
   void add_struct(t_struct* ts) {
+    if(should_drop(ts)) return;
     objects_.push_back(ts);
     structs_.push_back(ts);
   }
   void add_xception(t_struct* tx) {
+    if(should_drop(tx)) return;
     objects_.push_back(tx);
     xceptions_.push_back(tx);
   }
-  void add_service(t_service* ts) { services_.push_back(ts); }
+  void add_service(t_service* ts) { 
+    if(should_drop(ts)) return;
+    services_.push_back(ts); 
+  }
 
   // Programs to include
   const std::vector<t_program*>& get_includes() const { return includes_; }
@@ -345,23 +359,13 @@ public:
   void add_c_include(std::string path) { c_includes_.push_back(path); }
 
   const std::vector<std::string>& get_c_includes() { return c_includes_; }
-  
-  // Remove all types and fields that match any of the given annotations
-  void drop_annotations(const std::vector<std::string>& annotations) {
-    for(int i = 0; i < annotations.size(); i++) {
-      t_type_has_annotation pred;
-      pred.annotation = &annotations[i];
-      #define DROP(V) V.erase(std::remove_if(V.begin(), V.end(), pred), V.end())
-	  DROP(typedefs_);
-	  DROP(enums_);
-	  DROP(objects_);
-	  DROP(structs_);
-	  DROP(xceptions_);
-	  #undef DROP
-    }
-    for(int i = 0; i < objects_.size(); i++) objects_[i]->drop_annotations(annotations);
-    for(int i = 0; i < structs_.size(); i++) structs_[i]->drop_annotations(annotations);
-    for(int i = 0; i < xceptions_.size(); i++) xceptions_[i]->drop_annotations(annotations);
+
+  const bool should_drop(const t_type *t) { return should_drop(t->annotations_); }
+  const bool should_drop(const t_field *f) { return should_drop(f->annotations_); }
+  const bool should_drop(const std::map<std::string, std::string> &annotations) {
+    for(int i = 0; i < undrops_.size(); i++) if(annotations.count(undrops_[i]) > 0) return false;
+  	for(int i = 0; i < drops_.size(); i++) if(annotations.count(drops_[i]) > 0) return true;
+  	return false;
   }
 
 private:
