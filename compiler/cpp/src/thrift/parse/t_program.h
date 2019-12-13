@@ -76,6 +76,8 @@ public:
   std::vector<std::string> drops_; // list of annotations. fields and types w/ any of these annotations will not be added to the program UNLESS...
   std::vector<std::string> undrops_; // ...they contain one of these annotations;
 
+  bool ignore_dups_; // silently drop fields that have an already-used id or name (useful for -loc-index)
+
   // Path accessor
   const std::string& get_path() const { return path_; }
 

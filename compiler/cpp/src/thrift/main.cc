@@ -702,6 +702,7 @@ void help() {
   fprintf(stderr, " -drop ANNOTATION   drop fields and type w/ the given annotation (may be passed multiple times)\n");
   fprintf(stderr, " -undrop ANNOTATION  don't drop fields w/ this annotation, even if they match a -drop\n");
   fprintf(stderr, " -loc-index FILE    write n3 loc index to FILE\n");
+  fprintf(stderr, " -ignore-dups    silently drop fields which use an earlier field id or name\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Options related to audit operation\n");
   fprintf(stderr, "   --audit OldFile   Old Thrift file to be audited with 'file'\n");
@@ -1098,6 +1099,7 @@ int main(int argc, char** argv) {
   string new_thrift_include_path;
   string old_input_file;
   string locindex;
+  bool ignore_dups = false;
 
   // Set the current path to a dummy value to make warning messages clearer.
   g_curpath = "arguments";
@@ -1165,6 +1167,8 @@ int main(int argc, char** argv) {
           usage();
         }
         locindex = arg;
+      } else if (strcmp(arg, "-ignore-dups") == 0) {
+      	ignore_dups = true;
       } else if (strcmp(arg, "-I") == 0) {
         // An argument of "-I\ asdf" is invalid and has unknown results
         arg = argv[++i];
@@ -1274,7 +1278,7 @@ int main(int argc, char** argv) {
     // Generate options
 
     // You gotta generate something!
-    if (generator_strings.empty()) {
+    if (generator_strings.empty() && locindex == "") {
       fprintf(stderr, "No output language(s) specified\n");
       usage();
     }
@@ -1295,6 +1299,7 @@ int main(int argc, char** argv) {
     t_program* program = new t_program(input_file);
     program->drops_ = drops;
     program->undrops_ = undrops;
+    program->ignore_dups_ = ignore_dups;
     if (out_path.size()) {
       program->set_out_path(out_path, out_path_is_absolute);
     }
