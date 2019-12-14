@@ -271,6 +271,9 @@ public:
 
   void add_include(std::string path, std::string include_site) {
     t_program* program = new t_program(path);
+    program->drops_ = drops_;
+    program->undrops_ = undrops_;
+    program->ignore_dups_ = ignore_dups_;
 
     // include prefix for this program is the site at which it was included
     // (minus the filename)
