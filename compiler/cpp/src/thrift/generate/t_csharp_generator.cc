@@ -66,6 +66,7 @@ public:
     union_ = false;
     serialize_ = false;
     wcf_ = false;
+    leg_ = false;
     wcf_namespace_.clear();
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
       if( iter->first.compare("async") == 0) {
