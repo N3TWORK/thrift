@@ -22,6 +22,12 @@ C#:
 Python:
 	- Add an element to thrift_spec identifying the class of enum fields
 	
+General:
+	- `-drop ANNOTATION` command line flag to drop types/fields matching the given annotation
+	- `-fast` flag to reuse parse results when processing the same file included multiple times
+		- seems to work well for python and c#
+		- java for some reason always generates fully-qualified type names
+
 == Building ==
 
 ```
