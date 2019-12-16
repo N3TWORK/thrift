@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <limits.h>
+#include <map>
 
 #ifdef _WIN32
 #include <windows.h> /* for GetFullPathName */
@@ -162,6 +163,11 @@ bool g_audit = false;
 bool g_return_failure = false;
 bool g_audit_fatal = true;
 bool g_generator_failure = false;
+
+/**
+ * Flag to control use of parse g_parse_cache
+ */
+bool g_fast = false;
 
 /**
  * Win32 doesn't have realpath, so use fallback implementation in that case,
@@ -687,8 +693,8 @@ void help() {
   fprintf(stderr, "  -nowarn     Suppress all compiler warnings (BAD!)\n");
   fprintf(stderr, "  -strict     Strict compiler warnings on\n");
   fprintf(stderr, "  -v[erbose]  Verbose mode\n");
-  fprintf(stderr, "  -r[ecurse]  Also generate included files\n");
-  fprintf(stderr, "  -debug      Parse debug trace to stdout\n");
+  fprintf(stderr, "  -r[ecurse]  Also generate included files\n");  
+  fprintf(stderr, "  -fast       Run faster when files are included multiple times (uses g_parse_cache rather than reparsing; wrapped in an option because all modes may not support this correctly)\n");
   fprintf(stderr, "  -debug      Parse debug trace to stdout\n");
   fprintf(stderr,
           "  --allow-neg-keys  Allow negative field keys (Used to "
@@ -910,12 +916,24 @@ bool skip_utf8_bom(FILE* f) {
   return false;
 }
 
+map<string, t_program*> g_parse_cache; // save parse results to avoid extra parsing of same file included multiple times
+
 /**
  * Parses a program
  */
 void parse(t_program* program, t_program* parent_program) {
   // Get scope file path
   string path = program->get_path();
+  if(g_fast && g_parse_cache.count(path)) {
+    program->clone(g_parse_cache[path]);
+    if(parent_program != NULL) {
+      program->add_to_scope(program->get_name() + ".", parent_program->scope());
+    }
+    return;
+  } else {
+  	// not always enabled because the parse cache might break some modes (in particular pointer equality for programs might not be as expected)
+  }	
+  //fprintf(stderr, "parsing %s\n", path.c_str());
 
   // Set current dir global, which is used in the include_file function
   g_curdir = directory_name(path);
@@ -982,6 +1000,8 @@ void parse(t_program* program, t_program* parent_program) {
     failure(x.c_str());
   }
   fclose(yyin);
+
+  g_parse_cache[path] = program;
 }
 
 /**
@@ -1131,6 +1151,8 @@ int main(int argc, char** argv) {
         g_verbose = 1;
       } else if (strcmp(arg, "-r") == 0 || strcmp(arg, "-recurse") == 0) {
         gen_recurse = true;
+      } else if (strcmp(arg, "-fast") == 0) {
+        g_fast = true;
       } else if (strcmp(arg, "-allow-neg-keys") == 0) {
         g_allow_neg_field_keys = true;
       } else if (strcmp(arg, "-allow-64bit-consts") == 0) {

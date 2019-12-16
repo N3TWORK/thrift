@@ -42,6 +42,7 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-label"
+#pragma GCC diagnostic ignored "-Wdeprecated-register"
 #endif
 
 #ifdef _MSC_VER
@@ -155,6 +156,8 @@ insert             BEGIN(incl);
     insert_stack[insert_stack_ptr].curpath = g_curpath;
     insert_stack[insert_stack_ptr].lineno = yylineno;
     insert_stack_ptr++;
+
+    //fprintf(stderr, "insert %s, depth %d\n", yytext, insert_stack_ptr);
     
     std::string fname = yytext;
     if(fname[0] != '"' || fname[fname.size() - 1] != '"') {
@@ -165,7 +168,7 @@ insert             BEGIN(incl);
     fname = g_curdir + "/" + fname;
     yyin = fopen(fname.c_str(), "r");
     if (!yyin) {
-      yyerror("insert %s: file not found (absolute path: %s)\n", yytext, (g_curdir + "/" + fname).c_str());
+      yyerror("insert %s: could not open file: %s (absolute path: %s)\n", yytext, strerror(errno), fname.c_str());
       exit( 1 );
     }
     yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
@@ -180,6 +183,7 @@ insert             BEGIN(incl);
       yyterminate();
     } else {
       insert_stack_ptr--;
+      fclose(yyin);
       yy_delete_buffer(YY_CURRENT_BUFFER);
       yy_switch_to_buffer(insert_stack[insert_stack_ptr].buffer);
       g_curdir = insert_stack[insert_stack_ptr].curdir;

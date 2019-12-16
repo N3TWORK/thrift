@@ -2974,7 +2974,7 @@ string t_csharp_generator::type_name(t_type* ttype,
 
   t_program* program = ttype->get_program();
   string postfix = (!is_required && nullable_ && in_param && ttype->is_enum()) ? "?" : "";
-  if (program != NULL && program != program_) {
+  if (program != NULL && program->get_path() != program_->get_path()) {
     string ns = program->get_namespace("csharp");
     if (!ns.empty()) {
       return ns + "." + normalize_name(ttype->get_name()) + postfix;
@@ -3147,6 +3147,7 @@ void t_csharp_generator::generate_csharp_docstring_comment(ostream& out, string 
 }
 
 void t_csharp_generator::generate_csharp_doc(ostream& out, t_field* field) {
+  // return; // disabled because useless (EK)
   if (field->get_type()->is_enum()) {
     string combined_message = field->get_doc() + "\n<seealso cref=\""
                               + get_enum_class_name(field->get_type()) + "\"/>";
@@ -3189,7 +3190,7 @@ void t_csharp_generator::generate_csharp_doc(ostream& out, t_function* tfunction
 string t_csharp_generator::get_enum_class_name(t_type* type) {
   string package = "";
   t_program* program = type->get_program();
-  if (program != NULL && program != program_) {
+  if (program != NULL && *program != *program_) {
     package = program->get_namespace("csharp") + ".";
   }
   return package + type->get_name();

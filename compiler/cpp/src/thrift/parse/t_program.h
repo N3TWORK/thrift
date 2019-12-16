@@ -78,6 +78,9 @@ public:
 
   bool ignore_dups_; // silently drop fields that have an already-used id or name (useful for -loc-index)
 
+  const bool operator==(const t_program& that) { return path_ == that.path_; }
+  const bool operator!=(const t_program& that) { return path_ != that.path_; }
+
   // Path accessor
   const std::string& get_path() const { return path_; }
 
@@ -106,29 +109,36 @@ public:
   const std::vector<t_service*>& get_services() const { return services_; }
   const std::map<std::string, std::string>& get_namespaces() const { return namespaces_; }
 
+  const std::vector<t_type*>& get_types() const { return types_; }
+
   // Program elements
   void add_typedef(t_typedef* td) { 
     if(should_drop(td)) return;
     typedefs_.push_back(td); 
+    types_.push_back(td);
   }
   void add_enum(t_enum* te) {
     if(should_drop(te)) return;
-    enums_.push_back(te); 
+    enums_.push_back(te);
+    types_.push_back(te);
   }
   void add_const(t_const* tc) { consts_.push_back(tc); }
   void add_struct(t_struct* ts) {
     if(should_drop(ts)) return;
     objects_.push_back(ts);
     structs_.push_back(ts);
+    types_.push_back(ts);
   }
   void add_xception(t_struct* tx) {
     if(should_drop(tx)) return;
     objects_.push_back(tx);
     xceptions_.push_back(tx);
+    xceptions_.push_back(tx);
+    types_.push_back(tx);
   }
   void add_service(t_service* ts) { 
     if(should_drop(ts)) return;
-    services_.push_back(ts); 
+    services_.push_back(ts);
   }
 
   // Programs to include
@@ -373,6 +383,21 @@ public:
   	return false;
   }
 
+  // make this instance a clone of that
+  void clone(t_program* that) {
+    auto ip = include_prefix_;
+    *this = *that;
+    include_prefix_ = ip;
+  }
+
+  // add our types to the given scope
+  void add_to_scope(std::string prefix, t_scope* scope) {
+      for(auto &x : types_) scope->add_type(prefix + x->get_name(), x);
+      for(auto &x : consts_) scope->add_constant(prefix + x->get_name(), x);
+      for(auto &x : services_) scope->add_service(prefix + x->get_name(), x);
+  }
+    
+
 private:
   // File path
   std::string path_;
@@ -406,6 +431,8 @@ private:
   std::vector<t_struct*> structs_;
   std::vector<t_struct*> xceptions_;
   std::vector<t_service*> services_;
+
+  std::vector<t_type*> types_; // all types EXCEPT services
 
   // Dynamic namespaces
   std::map<std::string, std::string> namespaces_;

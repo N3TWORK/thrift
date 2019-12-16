@@ -2668,7 +2668,7 @@ string t_py_generator::type_name(t_type* ttype) {
   if (ttype->is_service()) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + "." + ttype->get_name();
   }
-  if (program != NULL && program != program_) {
+  if (program != NULL && *program != *program_) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + ".ttypes." + ttype->get_name();
   }
   return ttype->get_name();
