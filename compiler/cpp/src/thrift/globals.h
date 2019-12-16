@@ -138,4 +138,7 @@ extern int g_allow_neg_field_keys;
  */
 extern int g_allow_64bit_consts;
 
+// list of annotations to drop. any fields and types containing any of these annotations will be dropped from the program.
+extern std::vector<std::string> g_drops;
+
 #endif

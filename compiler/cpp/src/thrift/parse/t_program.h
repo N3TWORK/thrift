@@ -73,11 +73,6 @@ public:
     }
   }
 
-  std::vector<std::string> drops_; // list of annotations. fields and types w/ any of these annotations will not be added to the program UNLESS...
-  std::vector<std::string> undrops_; // ...they contain one of these annotations;
-
-  bool ignore_dups_; // silently drop fields that have an already-used id or name (useful for -loc-index)
-
   const bool operator==(const t_program& that) { return path_ == that.path_; }
   const bool operator!=(const t_program& that) { return path_ != that.path_; }
 
@@ -281,9 +276,6 @@ public:
 
   void add_include(std::string path, std::string include_site) {
     t_program* program = new t_program(path);
-    program->drops_ = drops_;
-    program->undrops_ = undrops_;
-    program->ignore_dups_ = ignore_dups_;
 
     // include prefix for this program is the site at which it was included
     // (minus the filename)
@@ -378,8 +370,7 @@ public:
   const bool should_drop(const t_type *t) { return should_drop(t->annotations_); }
   const bool should_drop(const t_field *f) { return should_drop(f->annotations_); }
   const bool should_drop(const std::map<std::string, std::string> &annotations) {
-    for(int i = 0; i < undrops_.size(); i++) if(annotations.count(undrops_[i]) > 0) return false;
-  	for(int i = 0; i < drops_.size(); i++) if(annotations.count(drops_[i]) > 0) return true;
+    for(auto& d : g_drops) if(annotations.count(d) > 0) return true;
   	return false;
   }
 

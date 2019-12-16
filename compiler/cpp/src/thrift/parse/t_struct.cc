@@ -16,12 +16,10 @@ bool t_struct::append(t_field* elem) {
 															elem,
 															t_field::key_compare());
   if (bounds.first != bounds.second) {
-    if(g_program->ignore_dups_) return true;
 	return false;
   }
   // returns false when there is a conflict of field names
   if (get_field_by_name(elem->get_name()) != NULL) {
-    if(g_program->ignore_dups_) return true;
 	return false;
   }
   members_.push_back(elem);
