@@ -49,10 +49,10 @@ static const string endl = "\n"; // avoid ostream << std::endl flushes
 class t_py_generator : public t_generator {
 public:
   t_py_generator(t_program* program,
-                 const std::map<std::string, std::string>& parsed_options,
-                 const std::string& option_string)
+                 const std::map<string, string>& parsed_options,
+                 const string& option_string)
     : t_generator (program) {
-    std::map<std::string, std::string>::const_iterator iter;
+    std::map<string, string>::const_iterator iter;
 
     gen_newstyle_ = true;
     gen_utf8strings_ = true;
@@ -136,7 +136,7 @@ public:
     }
   }
 
-  virtual std::string indent_str() const {
+  virtual string indent_str() const {
     return "    ";
   }
 
@@ -159,7 +159,7 @@ public:
   void generate_xception(t_struct* txception);
   void generate_service(t_service* tservice);
 
-  std::string render_const_value(t_type* type, t_const_value* value);
+  string render_const_value(t_type* type, t_const_value* value);
 
   /**
    * Struct generation code
@@ -192,34 +192,34 @@ public:
 
   void generate_deserialize_field(std::ostream& out,
                                   t_field* tfield,
-                                  std::string prefix = "");
+                                  string prefix = "");
 
-  void generate_deserialize_struct(std::ostream& out, t_struct* tstruct, std::string prefix = "");
+  void generate_deserialize_struct(std::ostream& out, t_struct* tstruct, string prefix = "");
 
-  void generate_deserialize_container(std::ostream& out, t_type* ttype, std::string prefix = "");
+  void generate_deserialize_container(std::ostream& out, t_type* ttype, string prefix = "");
 
-  void generate_deserialize_set_element(std::ostream& out, t_set* tset, std::string prefix = "");
+  void generate_deserialize_set_element(std::ostream& out, t_set* tset, string prefix = "");
 
-  void generate_deserialize_map_element(std::ostream& out, t_map* tmap, std::string prefix = "");
+  void generate_deserialize_map_element(std::ostream& out, t_map* tmap, string prefix = "");
 
   void generate_deserialize_list_element(std::ostream& out,
                                          t_list* tlist,
-                                         std::string prefix = "");
+                                         string prefix = "");
 
-  void generate_serialize_field(std::ostream& out, t_field* tfield, std::string prefix = "");
+  void generate_serialize_field(std::ostream& out, t_field* tfield, string prefix = "");
 
-  void generate_serialize_struct(std::ostream& out, t_struct* tstruct, std::string prefix = "");
+  void generate_serialize_struct(std::ostream& out, t_struct* tstruct, string prefix = "");
 
-  void generate_serialize_container(std::ostream& out, t_type* ttype, std::string prefix = "");
+  void generate_serialize_container(std::ostream& out, t_type* ttype, string prefix = "");
 
   void generate_serialize_map_element(std::ostream& out,
                                       t_map* tmap,
-                                      std::string kiter,
-                                      std::string viter);
+                                      string kiter,
+                                      string viter);
 
-  void generate_serialize_set_element(std::ostream& out, t_set* tmap, std::string iter);
+  void generate_serialize_set_element(std::ostream& out, t_set* tmap, string iter);
 
-  void generate_serialize_list_element(std::ostream& out, t_list* tlist, std::string iter);
+  void generate_serialize_list_element(std::ostream& out, t_list* tlist, string iter);
 
   void generate_python_docstring(std::ostream& out, t_struct* tstruct);
 
@@ -236,32 +236,49 @@ public:
    * Helper rendering functions
    */
 
-  std::string py_autogen_comment();
-  std::string py_imports();
-  std::string render_includes();
-  std::string declare_argument(t_field* tfield);
-  std::string render_field_default_value(t_field* tfield);
-  std::string type_name(t_type* ttype);
-  std::string function_signature(t_function* tfunction, bool interface = false);
-  std::string argument_list(t_struct* tstruct,
-                            std::vector<std::string>* pre = NULL,
-                            std::vector<std::string>* post = NULL);
-  std::string type_to_enum(t_type* ttype);
-  std::string type_to_spec_args(t_type* ttype);
+  string py_autogen_comment();
+  string py_imports();
+  string render_includes();
+  string declare_argument(t_field* tfield);
+  string render_field_default_value(t_field* tfield);
+  string type_name(t_type* ttype);
+  string function_signature(t_function* tfunction, bool interface = false);
+  string argument_list(t_struct* tstruct,
+                            std::vector<string>* pre = NULL,
+                            std::vector<string>* post = NULL);
+  string type_to_enum(t_type* ttype);
+  string type_to_spec_args(t_type* ttype);
 
-  static bool is_valid_namespace(const std::string& sub_namespace) {
+  // return a string identifying the python enum classes of the given type (or None, if type is not an enum).
+  //
+  // for maps, this is a recursive tuple, (KEY_ENUM, VAL_ENUM).
+  //
+  // for lists and sets, the value is of the element type.
+  string type_to_python_enum_spec(t_type* t) {
+    while(t->is_typedef()) t = ((t_typedef*)t)->get_type();
+    if(t->is_map()) {
+      auto m = (t_map*)t;
+      return "(" + type_to_python_enum_spec(m->get_key_type()) + ", " + type_to_python_enum_spec(m->get_val_type()) + ")";
+    }
+    if(t->is_set()) return type_to_python_enum_spec(((t_set*)t)->get_elem_type());
+    if(t->is_list()) return type_to_python_enum_spec(((t_list*)t)->get_elem_type());
+    if(t->is_enum()) return type_name(t);
+    return "None";
+  }
+
+  static bool is_valid_namespace(const string& sub_namespace) {
     return sub_namespace == "twisted";
   }
 
-  static std::string get_real_py_module(const t_program* program, bool gen_twisted, std::string package_dir="") {
+  static string get_real_py_module(const t_program* program, bool gen_twisted, string package_dir="") {
     if (gen_twisted) {
-      std::string twisted_module = program->get_namespace("py.twisted");
+      string twisted_module = program->get_namespace("py.twisted");
       if (!twisted_module.empty()) {
         return twisted_module;
       }
     }
 
-    std::string real_module = program->get_namespace("py");
+    string real_module = program->get_namespace("py");
     if (real_module.empty()) {
       return program->get_name();
     }
@@ -285,15 +302,15 @@ private:
   bool gen_dynamic_;
 
   bool gen_dynbase_;
-  std::string gen_dynbaseclass_;
-  std::string gen_dynbaseclass_frozen_;
-  std::string gen_dynbaseclass_exc_;
+  string gen_dynbaseclass_;
+  string gen_dynbaseclass_frozen_;
+  string gen_dynbaseclass_exc_;
 
-  std::string import_dynbase_;
+  string import_dynbase_;
 
   bool gen_slots_;
 
-  std::string copy_options_;
+  string copy_options_;
 
   /**
    * True if we should generate code for use with zope.interface.
@@ -331,16 +348,16 @@ private:
   ofstream_with_content_based_conditional_update f_consts_;
   ofstream_with_content_based_conditional_update f_service_;
 
-  std::string package_dir_;
-  std::string module_;
+  string package_dir_;
+  string module_;
 
 protected:
-  virtual std::set<std::string> lang_keywords() const {
-    std::string keywords[] = { "False", "None", "True", "and", "as", "assert", "break", "class",
+  virtual std::set<string> lang_keywords() const {
+    string keywords[] = { "False", "None", "True", "and", "as", "assert", "break", "class",
           "continue", "def", "del", "elif", "else", "except", "exec", "finally", "for", "from",
           "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "print",
           "raise", "return", "try", "while", "with", "yield" };
-    return std::set<std::string>(keywords, keywords + sizeof(keywords)/sizeof(keywords[0]) );
+    return std::set<string>(keywords, keywords + sizeof(keywords)/sizeof(keywords[0]) );
   }
 };
 
@@ -429,7 +446,7 @@ string t_py_generator::py_autogen_comment() {
   if (!coding_.empty()) {
       coding = "# -*- coding: " + coding_ + " -*-\n";
   }
-  return coding + std::string("#\n") + "# Autogenerated by Thrift Compiler (" + THRIFT_VERSION + ")\n"
+  return coding + string("#\n") + "# Autogenerated by Thrift Compiler (" + THRIFT_VERSION + ")\n"
          + "#\n" + "# DO NOT EDIT UNLESS YOU ARE SURE THAT YOU KNOW WHAT YOU ARE DOING\n" + "#\n"
          + "#  options string: " + copy_options_ + "\n" + "#\n";
 }
@@ -706,15 +723,15 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         indent(out) << "None,  # " << sorted_keys_pos << endl;
       }
 
-      t_type* t = (*m_iter)->get_type();
-      indent(out) << "(" << (*m_iter)->get_key() << ", " << type_to_enum(t)
-                  << ", "
-                  << "'" << (*m_iter)->get_name() << "'"
-                  << ", " << type_to_spec_args((*m_iter)->get_type()) << ", "
-                  << render_field_default_value(*m_iter) << ", "
-                  << (t->is_enum() ? type_name(t) : "None") << ", " // for enum fields, include name of enum class
-                  << "),"
-                  << "  # " << sorted_keys_pos << endl;
+      indent(out)
+        << "(" << (*m_iter)->get_key() << ", " // key [0]
+        << type_to_enum((*m_iter)->get_type()) << ", " // thrift type [1]
+        << "'" << (*m_iter)->get_name() << "'" << ", "  // field name [2]
+        << type_to_spec_args((*m_iter)->get_type()) << ", " // type spec args [3]
+        << render_field_default_value(*m_iter) << ", " // default value [4]
+        << type_to_python_enum_spec((*m_iter)->get_type()) // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
+        << "),"
+        << "  # " << sorted_keys_pos << endl;
 
       sorted_keys_pos++;
     }
@@ -1452,8 +1469,8 @@ void t_py_generator::generate_service_client(t_service* tservice) {
     indent(f_service_) << "def send_" << function_signature(*f_iter, false) << ":" << endl;
     indent_up();
 
-    std::string argsname = (*f_iter)->get_name() + "_args";
-    std::string messageType = (*f_iter)->is_oneway() ? "TMessageType.ONEWAY" : "TMessageType.CALL";
+    string argsname = (*f_iter)->get_name() + "_args";
+    string messageType = (*f_iter)->is_oneway() ? "TMessageType.ONEWAY" : "TMessageType.CALL";
 
     // Serialize the request header
     if (gen_twisted_ || gen_tornado_) {
@@ -1485,7 +1502,7 @@ void t_py_generator::generate_service_client(t_service* tservice) {
     indent_down();
 
     if (!(*f_iter)->is_oneway()) {
-      std::string resultname = (*f_iter)->get_name() + "_result";
+      string resultname = (*f_iter)->get_name() + "_result";
       // Open function
       f_service_ << endl;
       if (gen_twisted_ || gen_tornado_) {
