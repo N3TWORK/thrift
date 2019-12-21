@@ -823,7 +823,43 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   out << '\n';
 
-  // special method to set default values (can't do in constructor because structs can't have construtors)
+  if(!is_cs_struct(tstruct)) {
+    // We always want a default, no argument constructor for Reading
+    indent(out) << "public " << normalize_name(tstruct->get_name()) << "() {" << endl;
+    indent(out) << "\t" << "SetThriftDefaults();" << endl;
+    indent(out) << "}" << endl << endl;
+  } else {
+    // c# structs can't have no-argument constructors
+  }
+
+  // argument-taking form of constructor
+  if (has_required_fields) {
+    indent(out) << "public " << tstruct->get_name() << "(";
+    bool first = true;
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if (field_is_required((*m_iter))) {
+        if (first) {
+          first = false;
+        } else {
+          out << ", ";
+        }
+        out << type_name((*m_iter)->get_type()) << " " << normalize_name((*m_iter)->get_name());
+      }
+    }
+    out << ") {" << endl;
+    indent_up();
+    indent(out) << "SetThriftDefaults();" << endl;
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if (field_is_required((*m_iter))) {
+        indent(out) << "this." << prop_name((*m_iter)) << " = " << normalize_name((*m_iter)->get_name()) << ";"
+                    << endl;
+      }
+    }
+    indent_down();
+    indent(out) << "}" << endl << endl;
+  }
+
+  // special method to set default values (special method to support struccts, which can't have construtors)
   indent(out) << "// init fields w/ non-zero default values\n";
   indent(out) << "public void SetThriftDefaults() {\n";
   indent_up();
