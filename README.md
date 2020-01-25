@@ -31,6 +31,7 @@ General:
 == Building ==
 
 ```
+brew install bison # known to work w/ v3.4.1
 cd compiler/cpp
 mkdir cmake-build && cd cmake-build
 cmake ..
