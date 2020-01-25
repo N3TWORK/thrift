@@ -30,6 +30,8 @@ General:
 
 == Building ==
 
+(Note: A build is checked into the triumph repo, so you only need to do this if you want to make further modifications to the compiler.)
+
 ```
 brew install bison # known to work w/ v3.4.1
 cd compiler/cpp
