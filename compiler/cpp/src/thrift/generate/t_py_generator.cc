@@ -151,6 +151,34 @@ public:
    * Program-level generation functions
    */
 
+  string py_type_name(t_type* t) {
+    return t->is_base_type() ? py_base_type_name((t_base_type*)t) : type_name(t);
+  }
+
+  string py_base_type_name(t_base_type* t) {
+    // TODO: not 100% sure this is right for all cases; defnly wrong if we are using unicode as string type
+    switch (t->get_base()) {
+    case t_base_type::TYPE_VOID:
+    return "None";
+    case t_base_type::TYPE_STRING:
+    return t->is_binary() || !gen_utf8strings_ ? "str" : "unicode";
+    case t_base_type::TYPE_BOOL:
+    return "bool";
+    case t_base_type::TYPE_I8:
+    return "int";
+    case t_base_type::TYPE_I16:
+    return "int";
+    case t_base_type::TYPE_I32:
+    return "int";
+    case t_base_type::TYPE_I64:
+    return "int";
+    case t_base_type::TYPE_DOUBLE:
+    return "int";
+    default:
+    throw "compiler error: no python name for base type " + t_base_type::t_base_name(t->get_base());
+    }
+  }
+  
   void generate_typedef(t_typedef* ttypedef);
   void generate_enum(t_enum* tenum);
   void generate_const(t_const* tconst);
@@ -249,7 +277,7 @@ public:
   string type_to_enum(t_type* ttype);
   string type_to_spec_args(t_type* ttype);
 
-  // return a string identifying the python enum classes of the given type (or None, if type is not an enum).
+  // return a string identifying the python enum of the given type (or None, if type is not an enum).
   //
   // for maps, this is a recursive tuple, (KEY_ENUM, VAL_ENUM).
   //
@@ -263,6 +291,22 @@ public:
     if(t->is_set()) return type_to_python_enum_spec(((t_set*)t)->get_elem_type());
     if(t->is_list()) return type_to_python_enum_spec(((t_list*)t)->get_elem_type());
     if(t->is_enum()) return type_name(t);
+    return "None";
+  }
+
+  // return a string identifying the python class of the given typedef type (or None, if type is not a typedef).
+  //
+  // for maps, this is a recursive tuple, (KEY_TYEPDEF, VAL_TYPEDEF).
+  //
+  // for lists and sets, the value is of the element type.
+  string type_to_python_typedef_spec(t_type* t) {
+    if(t->is_map()) {
+      auto m = (t_map*)t;
+      return "(" + type_to_python_typedef_spec(m->get_key_type()) + ", " + type_to_python_typedef_spec(m->get_val_type()) + ")";
+    }
+    if(t->is_set()) return type_to_python_typedef_spec(((t_set*)t)->get_elem_type());
+    if(t->is_list()) return type_to_python_typedef_spec(((t_list*)t)->get_elem_type());
+    if(t->is_typedef()) return type_name(t);
     return "None";
   }
 
@@ -485,12 +529,15 @@ void t_py_generator::close_generator() {
 }
 
 /**
- * Generates a typedef. This is not done in Python, types are all implicit.
+ * Generates a typedef.
  *
  * @param ttypedef The type definition
  */
 void t_py_generator::generate_typedef(t_typedef* ttypedef) {
-  (void)ttypedef;
+  t_type* base = ttypedef;
+  while (base->is_typedef()) base = ((t_typedef*)base)->get_type();
+  f_types_ << "\n";
+  indent(f_types_) << "class " << type_name(ttypedef) << "(" << py_type_name(base) << "): pass\n";  
 }
 
 /**
@@ -729,7 +776,8 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         << "'" << (*m_iter)->get_name() << "'" << ", "  // field name [2]
         << type_to_spec_args((*m_iter)->get_type()) << ", " // type spec args [3]
         << render_field_default_value(*m_iter) << ", " // default value [4]
-        << type_to_python_enum_spec((*m_iter)->get_type()) // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
+        << type_to_python_enum_spec((*m_iter)->get_type()) << ", " // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
+        << type_to_python_typedef_spec((*m_iter)->get_type()) // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
         << "),"
         << "  # " << sorted_keys_pos << endl;
 
@@ -2202,8 +2250,12 @@ void t_py_generator::generate_deserialize_field(ostream& out,
   } else if (type->is_container()) {
     generate_deserialize_container(out, type, name);
   } else if (type->is_base_type() || type->is_enum()) {
-    indent(out) << name << " = iprot.";
-
+    string wrapBegin = "", wrapEnd = "";
+    if(tfield->get_type()->is_typedef()) {
+    	wrapBegin = type_name(tfield->get_type()) + "(";
+    	wrapEnd = ")";
+    }
+    indent(out) << name << " = " << wrapBegin << "iprot.";
     if (type->is_base_type()) {
       t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
       switch (tbase) {
@@ -2242,7 +2294,7 @@ void t_py_generator::generate_deserialize_field(ostream& out,
     } else if (type->is_enum()) {
       out << "readI32()";
     }
-    out << endl;
+    out << wrapEnd << endl;
 
   } else {
     printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
@@ -2677,10 +2729,6 @@ string t_py_generator::argument_list(t_struct* tstruct, vector<string>* pre, vec
 }
 
 string t_py_generator::type_name(t_type* ttype) {
-  while (ttype->is_typedef()) {
-    ttype = ((t_typedef*)ttype)->get_type();
-  }
-
   t_program* program = ttype->get_program();
   if (ttype->is_service()) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + "." + ttype->get_name();

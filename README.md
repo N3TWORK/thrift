@@ -21,6 +21,7 @@ C#:
 	
 Python:
 	- Add an element to thrift_spec identifying the class of enum fields
+	- Generate wrapper types for typedefs
 	
 General:
 	- `-drop ANNOTATION` command line flag to drop types/fields matching the given annotation
