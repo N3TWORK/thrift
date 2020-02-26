@@ -777,7 +777,8 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         << type_to_spec_args((*m_iter)->get_type()) << ", " // type spec args [3]
         << render_field_default_value(*m_iter) << ", " // default value [4]
         << type_to_python_enum_spec((*m_iter)->get_type()) << ", " // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
-        << type_to_python_typedef_spec((*m_iter)->get_type()) // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
+        << type_to_python_typedef_spec((*m_iter)->get_type()) << ", " // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
+        << (((*m_iter)->get_req() == t_field::T_REQUIRED) ? "True" : "False") // required field? [7]
         << "),"
         << "  # " << sorted_keys_pos << endl;
 
