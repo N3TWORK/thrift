@@ -1,5 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
+/* Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership. The ASF licenses this file
@@ -69,22 +68,22 @@ public:
     leg_ = false;
     wcf_namespace_.clear();
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
-      if( iter->first.compare("async") == 0) {
+      if ( iter->first.compare("async") == 0) {
         async_ = true;
-      } else if( iter->first.compare("nullable") == 0) {
+      } else if ( iter->first.compare("nullable") == 0) {
         throw "not supported";
         nullable_ = true;
-      } else if( iter->first.compare("hashcode") == 0) {
+      } else if ( iter->first.compare("hashcode") == 0) {
         hashcode_ = true;
-      } else if( iter->first.compare("union") == 0) {
+      } else if ( iter->first.compare("union") == 0) {
         union_ = true;
-      } else if( iter->first.compare("serial") == 0) {
+      } else if ( iter->first.compare("serial") == 0) {
         serialize_ = true;
         wcf_namespace_ = iter->second; // since there can be only one namespace
-      } else if( iter->first.compare("wcf") == 0) {
+      } else if ( iter->first.compare("wcf") == 0) {
         wcf_ = true;
         wcf_namespace_ = iter->second;
-      } else if( iter->first.compare("leg") == 0) {
+      } else if ( iter->first.compare("leg") == 0) {
         leg_ = true;
       } else {
         throw "unknown option csharp:" + iter->first;
@@ -107,12 +106,8 @@ public:
   void generate_union(t_struct* tunion);
   void generate_xception(t_struct* txception);
   void generate_service(t_service* tservice);
-  void generate_property(ostream& out, t_field* tfield, bool isPublic, bool generateIsset);
-  void generate_csharp_property(ostream& out,
-                                t_field* tfield,
-                                bool isPublic,
-                                bool includeIsset = true,
-                                string fieldPrefix = "");
+  void generate_property(ostream& out, t_struct *tstruct, t_field* tfield, bool isPublic, bool generateIsset);
+  void generate_csharp_property(ostream& out, t_struct *tstruct, t_field* tfield, bool isPublic, bool includeIsset = true, string fieldPrefix = "");
   bool print_const_value(std::ostream& out,
                          string name,
                          t_type* type,
@@ -140,6 +135,17 @@ public:
 										 bool in_class = false,
 										 bool is_result = false);
   void generate_csharp_struct_set_defaults_body(ostream& out, t_struct* tstruct);
+  void assert_csharp_no_defaults(t_struct* tstruct) {
+    // c# structs must be completely initialized before calling any functions (why? dunno), which breaks our set defaults strategy. TODO: fix this. in the mean time just throw an error if we're trying to use default values w/ a struct.
+
+    // god the thrift generation code is such a mess, we must resort to extreme measures
+    stringstream ss;
+    generate_csharp_struct_set_defaults_body(ss, tstruct);
+    if(ss.str().size() > 0) {
+      throw "type '" + tstruct->get_name() + "' annotated with 'csharp.struct' has default values\nDefault values are not supported w/ the 'csharp.struct' annotation (sorry)\n(Ask erin to fix it)";
+    }
+  }
+
   void generate_csharp_union_definition(std::ostream& out, t_struct* tunion);
   void generate_csharp_union_class(std::ostream& out, t_struct* tunion, t_field* tfield);
   void generate_csharp_wcffault(std::ostream& out, t_struct* tstruct);
@@ -202,7 +208,16 @@ public:
 
   // is t a thrift struct that will be represented as a c# struct (i.e.,, value type, not ref type class)? 
   bool is_cs_struct(t_type* t) {
-    return t->is_struct() && t->annotations_.count("cs.struct") > 0;
+    return t->is_struct() && t->annotations_.count("csharp.struct") > 0;
+  }
+
+  // if given struct has annotation "csharp.oneOf", then only a single field at a time can be set, and it will be stored in the type iface (or object, if none provded).
+  bool is_sum_type(t_type* t, std::string *iface) {
+  	if (!t->annotations_.count("csharp.oneOf")) return false;
+  	if (!iface) return true;
+  	*iface = t->annotations_["csharp.oneOf"];
+  	if (*iface == "1") *iface = "object";
+    return true;
   }
 
   bool is_primitive_or_container(t_type* t) {
@@ -211,8 +226,8 @@ public:
   
   // does field wrap a value type in a Ref<> class?
   bool field_is_ref_wrapped(t_field* f) { 
-     if(f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
-     if(field_is_required(f) || field_has_default(f)) return false;
+     if (f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
+     if (field_is_required(f) || field_has_default(f)) return false;
      return is_cs_struct(f->get_type());
   }
   
@@ -258,7 +273,7 @@ public:
   }
 
   bool field_can_be_null(t_field *f) {
-    if(!field_is_required(f)) return true;
+    if (!field_is_required(f)) return true;
     return type_can_be_null(f->get_type());
   }
 
@@ -807,9 +822,25 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   bool has_non_required_fields = false;
   bool has_non_required_default_value_fields = false;
   bool has_required_fields = false;
+
+  string iface;
+  if (is_sum_type(tstruct, &iface)) {
+    indent(out) << "public " << iface << " Value;" << endl << endl;
+    // right now we distinguish members by type ('cuz it's easy), so make sure they all have distinct types (TODO: remember what was set by field id)
+    std::set<string> seen;
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      string ft = field_type_name(*m_iter);
+      if(seen.count(ft)) {
+        throw "type '" + tstruct->get_name() + "' annotated with 'csharp.oneOf' contains fields w/ the same type ('" + (*m_iter)->get_name() + "' and at least one other field)\n" + 
+          "This is not supported (ask Erin to fix it)\n";
+      }
+      seen.insert(ft);
+    }
+  }
+  
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     generate_csharp_doc(out, *m_iter);
-    generate_property(out, *m_iter, true, true);
+    generate_property(out, tstruct, *m_iter, true, true);
     bool is_required = field_is_required((*m_iter));
     bool has_default = field_has_default((*m_iter));
     if (is_required) {
@@ -823,7 +854,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   out << '\n';
 
-  if(!is_cs_struct(tstruct)) {
+  if (!is_cs_struct(tstruct)) {
     // We always want a default, no argument constructor for Reading
     indent(out) << "public " << normalize_name(tstruct->get_name()) << "() {" << endl;
     indent(out) << "\t" << "SetThriftDefaults();" << endl;
@@ -848,7 +879,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     }
     out << ") {" << endl;
     indent_up();
-    indent(out) << "SetThriftDefaults();" << endl;
+    if (!is_cs_struct(tstruct)) indent(out) << "SetThriftDefaults();" << endl;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       if (field_is_required((*m_iter))) {
         indent(out) << "this." << prop_name((*m_iter)) << " = " << normalize_name((*m_iter)->get_name()) << ";"
@@ -862,10 +893,15 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   // special method to set default values (special method to support struccts, which can't have construtors)
   indent(out) << "// init fields w/ non-zero default values\n";
   indent(out) << "public void SetThriftDefaults() {\n";
-  indent_up();
-  generate_csharp_struct_set_defaults_body(out, tstruct);
-  indent_down();
+  if (!is_cs_struct(tstruct)) {
+    indent_up();
+    generate_csharp_struct_set_defaults_body(out, tstruct);
+    indent_down();
+  } else {
+    assert_csharp_no_defaults(tstruct);
+  }
   indent(out) << "}" << endl << endl;
+  
 
   generate_csharp_struct_reader(out, tstruct);
   if (is_result) {
@@ -938,7 +974,7 @@ void t_csharp_generator::generate_csharp_wcffault(ostream& out, t_struct* tstruc
   out << endl;
 
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    generate_property(out, *m_iter, true, false);
+    generate_property(out, tstruct, *m_iter, true, false);
   }
 
   scope_down(out);
@@ -1073,7 +1109,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       {
         if (null_allowed) {
           out << indent() << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
-        } else if(field_is_ref_wrapped(*f_iter)) {
+        } else if (field_is_ref_wrapped(*f_iter)) {
           out << indent() << "if (" << prop_name(*f_iter) << " != null) {" << endl;
         } else {
            indent(out) << "{" << endl;
@@ -1220,7 +1256,7 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
     }
 
     if (useFirstFlag && (!had_required)) {
-      indent(out) << "if(!__first) { __sb.Append(\", \"); }" << endl;
+      indent(out) << "if (!__first) { __sb.Append(\", \"); }" << endl;
       if (!is_required) {
         indent(out) << "__first = false;" << endl;
       }
@@ -2510,7 +2546,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
   string name = prefix + (is_propertyless ? "" : prop_access(tfield));
 
   if (type->is_struct() || type->is_xception()) {
-    if(field_is_ref_wrapped(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
+    if (field_is_ref_wrapped(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
     generate_deserialize_struct(out, (t_struct*)type, name);
   } else if (type->is_container()) {
     generate_deserialize_container(out, type, name);
@@ -2829,18 +2865,11 @@ void t_csharp_generator::generate_serialize_list_element(ostream& out,
   generate_serialize_field(out, &efield, "", true);
 }
 
-void t_csharp_generator::generate_property(ostream& out,
-                                           t_field* tfield,
-                                           bool isPublic,
-                                           bool generateIsset) {
-  generate_csharp_property(out, tfield, isPublic, generateIsset, "_");
+void t_csharp_generator::generate_property(ostream& out, t_struct *tstruct, t_field* tfield, bool isPublic, bool generateIsset) {
+  generate_csharp_property(out, tstruct, tfield, isPublic, generateIsset, "_");
 }
 
-void t_csharp_generator::generate_csharp_property(ostream& out,
-                                                  t_field* tfield,
-                                                  bool isPublic,
-                                                  bool generateIsset,
-                                                  string fieldPrefix) {
+void t_csharp_generator::generate_csharp_property(ostream& out, t_struct *tstruct, t_field* tfield, bool isPublic, bool generateIsset, string fieldPrefix) {
   if (leg_ && isPublic) {
     indent(out) << "[DataMember(Index = " << tfield->get_key() << ")]" << endl;
   }
@@ -2849,7 +2878,12 @@ void t_csharp_generator::generate_csharp_property(ostream& out,
   }
   bool has_default = field_has_default(tfield);
   bool is_required = field_is_required(tfield);
-  indent(out) << (isPublic ? "public " : "private ") << field_type_name(tfield) << " " << prop_name(tfield) << ";" << endl;
+  string ft = field_type_name(tfield);
+  if (is_sum_type(tstruct, NULL)) {
+    indent(out) << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << " { get { return Value as " << ft << "; } set { Value = value; } }" << endl;
+  } else {
+    indent(out) << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << ";" << endl;
+  }
 }
 
 string t_csharp_generator::make_valid_csharp_identifier(string const& fromName) {
@@ -2880,7 +2914,7 @@ string t_csharp_generator::make_valid_csharp_identifier(string const& fromName) 
 }
 
 void t_csharp_generator::cleanup_member_name_mapping(void* scope) {
-  if( member_mapping_scopes.empty()) {
+  if ( member_mapping_scopes.empty()) {
     throw "internal error: cleanup_member_name_mapping() no scope active";
   }
 
@@ -2893,7 +2927,7 @@ void t_csharp_generator::cleanup_member_name_mapping(void* scope) {
 }
 
 string t_csharp_generator::get_mapped_member_name(string name) {
-  if( ! member_mapping_scopes.empty()) {
+  if ( ! member_mapping_scopes.empty()) {
     member_mapping_scope& active = member_mapping_scopes.back();
     map<string, string>::iterator iter = active.mapping_table.find(name);
     if (active.mapping_table.end() != iter) {
@@ -2971,10 +3005,10 @@ string t_csharp_generator::prop_name(t_field* tfield, bool suppress_mapping) {
 
 string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
   string nm = prop_name(tfield, suppress_mapping);
-  if(field_is_ref_wrapped(tfield)) {
+  if (field_is_ref_wrapped(tfield)) {
     nm = nm + ".Value";
   }
-  if(is_wrapped_typedef(tfield->get_type())) {
+  if (is_wrapped_typedef(tfield->get_type())) {
     nm = nm + ".Value";
   }
   return nm;
@@ -2983,7 +3017,7 @@ string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
 string t_csharp_generator::field_type_name(t_field* f) {
   bool is_required = field_is_required(f);
   string nm = type_name(f->get_type(), false, false, true, is_required);
-  if(field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
+  if (field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
 }
 
@@ -3242,5 +3276,8 @@ THRIFT_REGISTER_GENERATOR(
     "    nullable:        Use nullable types for properties.\n"
     "    hashcode:        Generate a hashcode and equals implementation for classes.\n"
     "    union:           Use new union typing, which includes a static read function for union types\n"
-    "    leg:             (n3) include `DataMember(Index = THRIFT_ID)` annotations\n"
+    "    leg:             include `DataMember(Index = THRIFT_ID)` annotations\n"
+    "        **struct annotations**:\n"
+    "    (csharp.oneOf): generate struct that only contains a single member (discriminated union)\n"
+    "    (csharp.struct): generate c# struct (default is class)\n"
 )

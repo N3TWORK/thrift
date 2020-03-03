@@ -12,12 +12,16 @@ Thrift syntax:
 	- `insert "FNAME"` statement -- acts as though filename were copy-and-pasted in place of the insert statemnt (like C's #include)
 
 C#:
-	- typedefs generate single-item c# structs
-	- thrift structs can opt-in to be generated as c# structs (rather than classes) by using the "cs.struct" attribute
-		- an *optional* field referencing a c# struct will still have reference semantics, via wrapping the struct in a single-item "Ref" class
+	- typedefs generate unique types (as single-item c# structs)
+		- TODO: allow disabling this w/ the `alias` attribute
+	- thrift structs can be generated as c# structs (rather than classes) by using the attribute  `csharp.struct`
+		- LIMITATION: default values for structs is not supported (completely fixable, just have to work around a quirk of c#)
+		- NB. an optional field referencing a c# struct will still have reference semantics, via wrapping the struct in a single-item "Ref" class)
+	- support for sum-types -- annotate a struct with `csharp.oneOf = "<interface>"` to generate a c# struct that has a single field, of that interface type. every field of thrift struct must be optional, and exactly one field should be set.
+		- LIMITATION: which field is set is (lazily) determined by doing an "as" cast, so this *only works if all types are distinct*; TODO: remember what was set using the field identifier. (faster, more robust.)
 	- no __isset generated for optional value types (why: less memory cost; in the rare case you need the functionality, can recreate manually by including explicit companion "isset" variable)
 	- tab indents instead of spaces (to match our coding conventions)
-	- various restrictions 
+	- various restrictions for cases we are not using, so are untested...
 	
 Python:
 	- Add an element to thrift_spec identifying the class of enum fields
