@@ -522,7 +522,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
   indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
   indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
-  indent(out) << "public override string ToString() => Value.ToString();\n";
+  // indent(out) << "public override string ToString() => Value.ToString();\n"; // XXX(ek): quick hack for fixnum; should make this optional w/ attribute
 
   indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
   indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";

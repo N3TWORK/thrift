@@ -57,6 +57,7 @@ set(compiler_core
     src/thrift/generate/t_generator.cc
     src/thrift/parse/t_struct.cc
     src/thrift/parse/t_typedef.cc
+    src/thrift/parse/t_enum.cc
     src/thrift/parse/parse.cc
     ${CMAKE_CURRENT_BINARY_DIR}/thrift/version.h
 )

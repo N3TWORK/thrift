@@ -25,6 +25,8 @@
 #include "thrift/parse/t_enum_value.h"
 #include "thrift/parse/t_type.h"
 
+class t_program;
+
 /**
  * An enumerated type. A list of constant objects with a name for the type.
  *
@@ -102,6 +104,8 @@ public:
   }
 
   bool is_enum() const { return true; }
+
+  void do_value_drops(t_program*);  
 
 private:
   std::vector<t_enum_value*> constants_;

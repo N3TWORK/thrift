@@ -114,6 +114,7 @@ public:
   }
   void add_enum(t_enum* te) {
     if(should_drop(te)) return;
+    te->do_value_drops(this);
     enums_.push_back(te);
     types_.push_back(te);
   }
@@ -369,6 +370,7 @@ public:
 
   const bool should_drop(const t_type *t) { return should_drop(t->annotations_); }
   const bool should_drop(const t_field *f) { return should_drop(f->annotations_); }
+  const bool should_drop(const t_enum_value *v) { return should_drop(v->annotations_); }
   const bool should_drop(const std::map<std::string, std::string> &annotations) {
     for(auto& d : g_drops) if(annotations.count(d) > 0) return true;
   	return false;

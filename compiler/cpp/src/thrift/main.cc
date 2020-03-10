@@ -147,7 +147,7 @@ int g_allow_neg_field_keys;
  */
 int g_allow_64bit_consts = 0;
 
-// list of annotations to drop. any fields and types containing any of these annotations will be dropped from the program.
+// list of annotations to drop. any fields, types, and enum values containing any of these annotations will be dropped from the program.
 std::vector<std::string> g_drops;
 
 /**
