@@ -490,16 +490,16 @@ EnumDefList:
     }
 
 EnumDef:
-  CaptureDocText EnumValue TypeAnnotations CommaOrSemicolonOptional
+  CaptureDocText TypeAnnotations EnumValue CommaOrSemicolonOptional
     {
       pdebug("EnumDef -> EnumValue");
-      $$ = $2;
+      $$ = $3;
       if ($1 != NULL) {
         $$->set_doc($1);
       }
-	  if ($3 != NULL) {
-        $$->annotations_ = $3->annotations_;
-        delete $3;
+	  if ($2 != NULL) {
+        $$->annotations_ = $2->annotations_;
+        delete $2;
       }
     }
 
