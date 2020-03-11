@@ -496,6 +496,7 @@ void t_csharp_generator::close_generator() {
 }
 
 void t_csharp_generator::generate_typedef(t_typedef* ttypedef) {
+  if(ttypedef->is_alias()) return;
   string name = namespace_dir_ + "/" + (ttypedef->get_name()) + ".cs";
   ofstream_with_content_based_conditional_update f;
 
