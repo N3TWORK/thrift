@@ -534,6 +534,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
 
   indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
+  if(!ttypedef->annotations_.count("customstr")) indent(out) << "public override string ToString() { return \"" << nm << "(\" + Value.ToString() + \")\"; }\n";
   
   scope_down(out);
   out << endl;
