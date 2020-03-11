@@ -13,7 +13,8 @@ Thrift syntax:
 
 C#:
 	- typedefs generate unique types (as single-item c# structs)
-		- TODO: allow disabling this w/ the `alias` attribute
+		- to disable this behavior, use the `alias` attribute:
+			- `typedef (alias) string FooId // will use string in generated source`
 	- thrift structs can be generated as c# structs (rather than classes) by using the attribute  `csharp.struct`
 		- LIMITATION: default values for structs is not supported (completely fixable, just have to work around a quirk of c#)
 		- NB. an optional field referencing a c# struct will still have reference semantics, via wrapping the struct in a single-item "Ref" class)

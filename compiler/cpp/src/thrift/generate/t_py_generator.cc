@@ -277,13 +277,23 @@ public:
   string type_to_enum(t_type* ttype);
   string type_to_spec_args(t_type* ttype);
 
+  t_type* unwrap_alias(t_type *t) {
+    while(t->is_alias()) t = ((t_typedef*)t)->get_type();
+    return t;
+  }
+  
+  t_type* unwrap_typedef(t_type* t) {
+    while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
+    return t;
+  }
+
   // return a string identifying the python enum of the given type (or None, if type is not an enum).
   //
   // for maps, this is a recursive tuple, (KEY_ENUM, VAL_ENUM).
   //
   // for lists and sets, the value is of the element type.
   string type_to_python_enum_spec(t_type* t) {
-    while(t->is_typedef()) t = ((t_typedef*)t)->get_type();
+    t = unwrap_typedef(t);
     if(t->is_map()) {
       auto m = (t_map*)t;
       return "(" + type_to_python_enum_spec(m->get_key_type()) + ", " + type_to_python_enum_spec(m->get_val_type()) + ")";
@@ -300,6 +310,7 @@ public:
   //
   // for lists and sets, the value is of the element type.
   string type_to_python_typedef_spec(t_type* t) {
+    t = unwrap_alias(t);
     if(t->is_map()) {
       auto m = (t_map*)t;
       return "(" + type_to_python_typedef_spec(m->get_key_type()) + ", " + type_to_python_typedef_spec(m->get_val_type()) + ")";
@@ -534,6 +545,7 @@ void t_py_generator::close_generator() {
  * @param ttypedef The type definition
  */
 void t_py_generator::generate_typedef(t_typedef* ttypedef) {
+  if(ttypedef->is_alias()) return;
   t_type* base = ttypedef;
   while (base->is_typedef()) base = ((t_typedef*)base)->get_type();
   f_types_ << "\n";
@@ -2252,8 +2264,9 @@ void t_py_generator::generate_deserialize_field(ostream& out,
     generate_deserialize_container(out, type, name);
   } else if (type->is_base_type() || type->is_enum()) {
     string wrapBegin = "", wrapEnd = "";
-    if(tfield->get_type()->is_typedef()) {
-    	wrapBegin = type_name(tfield->get_type()) + "(";
+    t_type *ft = unwrap_alias(tfield->get_type());
+    if(ft->is_typedef()) {
+    	wrapBegin = type_name(ft) + "(";
     	wrapEnd = ")";
     }
     indent(out) << name << " = " << wrapBegin << "iprot.";

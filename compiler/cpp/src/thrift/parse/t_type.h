@@ -59,6 +59,9 @@ public:
   virtual bool is_map() const { return false; }
   virtual bool is_service() const { return false; }
 
+  // an alias typedef is the classic thrift typedef -- generated code will use the underlying type. otherwise, typedef genereates a new wrapper type (implemented for c# and python).
+  bool is_alias() const { return is_typedef() && annotations_.count("alias") > 0; }
+
   t_program* get_program() { return program_; }
 
   const t_program* get_program() const { return program_; }

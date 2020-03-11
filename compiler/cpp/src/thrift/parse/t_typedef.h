@@ -24,12 +24,10 @@
 #include "thrift/parse/t_type.h"
 
 /**
- * A typedef is a mapping from a symbolic name to another type. In dymanically
- * typed languages (i.e. php/python) the code generator can actually usually
- * ignore typedefs and just use the underlying type directly, though in C++
- * the symbolic naming can be quite useful for code clarity.
+ * A typedef is a mapping from a symbolic name to another type.
  *
- * n3: c# we create a wrapping struct class, for type-safety/code clarity
+ * In c# and python we create a wrapping struct class, for type-safety/code clarity, i.e.
+ * typedef creates a new type. this can be disabled by adding the  "(alias)" annotation.
  *
  */
 class t_typedef : public t_type {

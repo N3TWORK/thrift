@@ -228,7 +228,12 @@ public:
   bool field_is_ref_wrapped(t_field* f) { 
      if (f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
      if (field_is_required(f) || field_has_default(f)) return false;
-     return is_cs_struct(f->get_type());
+     return is_cs_struct(unwrap_alias(f->get_type()));
+  }
+
+  t_type* unwrap_alias(t_type *t) {
+    while(t->is_alias()) t = ((t_typedef*)t)->get_type();
+    return t;
   }
   
   bool really_is_typedef_(t_type* t) {
@@ -237,7 +242,7 @@ public:
   }
   // do we generate a wrapper struct for the given typedef?
   bool is_wrapped_typedef(t_type* t) {
-    return really_is_typedef_(t);
+    return really_is_typedef_(unwrap_alias(t));
   } 
   t_type* unwrap_typedef(t_type* t) {
     while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
@@ -3027,6 +3032,7 @@ string t_csharp_generator::type_name(t_type* ttype,
                                      bool in_param,
                                      bool is_required) {
   (void)in_init;
+  ttype = unwrap_alias(ttype);
 
   if (ttype->is_base_type()) {
     return base_type_name((t_base_type*)ttype, in_container, in_param, is_required);
