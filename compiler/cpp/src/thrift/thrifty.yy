@@ -435,15 +435,15 @@ CommaOrSemicolonOptional:
     {}
 
 Typedef:
-  tok_typedef FieldType tok_identifier TypeAnnotations CommaOrSemicolonOptional
+  tok_typedef TypeAnnotations  FieldType tok_identifier CommaOrSemicolonOptional
     {
       pdebug("TypeDef -> tok_typedef FieldType tok_identifier");
-      validate_simple_identifier( $3);
-      t_typedef *td = new t_typedef(g_program, $2, $3);
+      validate_simple_identifier( $4);
+      t_typedef *td = new t_typedef(g_program, $3, $4);
       $$ = td;
-      if ($4 != NULL) {
-        $$->annotations_ = $4->annotations_;
-        delete $4;
+      if ($2 != NULL) {
+        $$->annotations_ = $2->annotations_;
+        delete $2;
       }
     }
 
