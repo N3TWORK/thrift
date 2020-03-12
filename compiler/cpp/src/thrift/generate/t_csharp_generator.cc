@@ -497,6 +497,7 @@ void t_csharp_generator::close_generator() {
 
 void t_csharp_generator::generate_typedef(t_typedef* ttypedef) {
   if(ttypedef->is_alias()) return;
+  
   string name = namespace_dir_ + "/" + (ttypedef->get_name()) + ".cs";
   ofstream_with_content_based_conditional_update f;
 
@@ -534,7 +535,13 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
 
   indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
-  if(!ttypedef->annotations_.count("customstr")) indent(out) << "public override string ToString() { return \"" << nm << "(\" + Value.ToString() + \")\"; }\n";
+  if(!ttypedef->annotations_.count("nostr")) indent(out) << "public override string ToString() { return \"" << nm << "(\" + Value.ToString() + \")\"; }\n";
+
+  if(!ttypedef->annotations_.count("nocast")) {
+	  // explicit cast operators, for convenience
+	  indent(out) << "public static explicit operator " << type_name(t) << "(" << nm << " x) { return x.Value; }\n";
+	  indent(out) << "public static explicit operator " << nm << "(" << type_name(t) << " x) { return new " << nm << "(x); }\n";
+  }
   
   scope_down(out);
   out << endl;
