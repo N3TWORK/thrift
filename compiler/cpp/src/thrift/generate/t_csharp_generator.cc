@@ -517,15 +517,15 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
 
   string nm = normalize_name(ttypedef->get_name());
+  string vnm = type_name(t);
   
   indent(out) << "[Serializable]" << endl;
-  indent(out) << "public partial struct " << nm << " : IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
+  indent(out) << "public partial struct " << nm << " : TTypedef<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
   scope_up(out);
 
-  indent(out) << "public " << type_name(t) << " Value;" << endl;
-  out << '\n';
-  
-  indent(out) << "public " << nm << "(" << type_name(t) << " value) { Value = value; }" << endl;
+  indent(out) << "public " << vnm << " _Value;" << endl;
+  indent(out) << "public " << vnm << " Value { get { return  _Value; }  set { _Value = value; } }\n";
+  indent(out) << "public " << nm << "(" << vnm << " value) { _Value = value; }" << endl;
   indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
   indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
   indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
@@ -539,8 +539,8 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
 
   if(!ttypedef->annotations_.count("nocast")) {
 	  // explicit cast operators, for convenience
-	  indent(out) << "public static explicit operator " << type_name(t) << "(" << nm << " x) { return x.Value; }\n";
-	  indent(out) << "public static explicit operator " << nm << "(" << type_name(t) << " x) { return new " << nm << "(x); }\n";
+	  indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
+	  indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
   }
   
   scope_down(out);
@@ -3023,7 +3023,7 @@ string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
     nm = nm + ".Value";
   }
   if (is_wrapped_typedef(tfield->get_type())) {
-    nm = nm + ".Value";
+    nm = nm + "._Value";
   }
   return nm;
 }
