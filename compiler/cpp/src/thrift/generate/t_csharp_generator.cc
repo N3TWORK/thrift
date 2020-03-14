@@ -522,27 +522,24 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "[Serializable]" << endl;
   indent(out) << "public partial struct " << nm << " : TTypedef<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
   scope_up(out);
-
-  indent(out) << "public " << vnm << " _Value;" << endl;
-  indent(out) << "public " << vnm << " Value { get { return  _Value; }  set { _Value = value; } }\n";
-  indent(out) << "public " << nm << "(" << vnm << " value) { _Value = value; }" << endl;
+  indent(out) << "public " << vnm << " Value;\n";
+  indent(out) << endl;
+  indent(out) << "public " << nm << "(" << vnm << " value) { Value = value; }" << endl;
   indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
   indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
   indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
-  // indent(out) << "public override string ToString() => Value.ToString();\n"; // XXX(ek): quick hack for fixnum; should make this optional w/ attribute
-
   indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
   indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
-
   indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
   if(!ttypedef->annotations_.count("nostr")) indent(out) << "public override string ToString() { return \"" << nm << "(\" + Value.ToString() + \")\"; }\n";
-
+  indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
+  indent(out) << "public void SetValue(" << vnm << " value) { Value = value; }\n";
   if(!ttypedef->annotations_.count("nocast")) {
 	  // explicit cast operators, for convenience
 	  indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
 	  indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
   }
-  
+ 
   scope_down(out);
   out << endl;
 
@@ -3023,7 +3020,7 @@ string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
     nm = nm + ".Value";
   }
   if (is_wrapped_typedef(tfield->get_type())) {
-    nm = nm + "._Value";
+    nm = nm + ".Value";
   }
   return nm;
 }
