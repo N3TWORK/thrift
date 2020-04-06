@@ -26,6 +26,11 @@ C#:
 	- tab indents instead of spaces (to match our coding conventions)
 	- various restrictions for cases we are not using, so are untested...
 	
+Java:
+	- `java.oneOf` annotation to generate sum types
+	- don't generate a deepCopy method (it complicates sum-type usage)
+		- (specifically then we need the interface type to implement deepCopy, which seems annoying, but would be no big deal if really needed)
+	
 Python:
 	- Add an element to thrift_spec identifying the class of enum fields
 	- Generate wrapper types for typedefs

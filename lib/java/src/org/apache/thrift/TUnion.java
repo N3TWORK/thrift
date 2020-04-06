@@ -54,54 +54,6 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
     setFieldValue(setField, value);
   }
 
-  protected TUnion(TUnion<T, F> other) {
-    if (!other.getClass().equals(this.getClass())) {
-      throw new ClassCastException();
-    }
-    setField_ = other.setField_;
-    value_ = deepCopyObject(other.value_);
-  }
-
-  private static Object deepCopyObject(Object o) {
-    if (o instanceof TBase) {
-      return ((TBase)o).deepCopy();
-    } else if (o instanceof ByteBuffer) {
-      return TBaseHelper.copyBinary((ByteBuffer)o);
-    } else if (o instanceof List) {
-      return deepCopyList((List)o);
-    } else if (o instanceof Set) {
-      return deepCopySet((Set)o);
-    } else if (o instanceof Map) {
-      return deepCopyMap((Map)o);
-    } else {
-      return o;
-    }
-  }
-
-  private static Map deepCopyMap(Map<Object, Object> map) {
-    Map copy = new HashMap();
-    for (Map.Entry<Object, Object> entry : map.entrySet()) {
-      copy.put(deepCopyObject(entry.getKey()), deepCopyObject(entry.getValue()));
-    }
-    return copy;
-  }
-
-  private static Set deepCopySet(Set set) {
-    Set copy = new HashSet();
-    for (Object o : set) {
-      copy.add(deepCopyObject(o));
-    }
-    return copy;
-  }
-
-  private static List deepCopyList(List list) {
-    List copy = new ArrayList(list.size());
-    for (Object o : list) {
-      copy.add(deepCopyObject(o));
-    }
-    return copy;
-  }
-
   public F getSetField() {
     return setField_;
   }
