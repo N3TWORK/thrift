@@ -1522,7 +1522,9 @@ void t_java_generator::generate_java_struct_definition(ostream& out,
       out << declare_field(*m_iter, false, true) << endl;
     }
   } else {
-    indent(out) << "private " << sum_interface_type(tstruct) << " Value;" << endl;
+    string priv = bean_style_ || private_members_ ? "private" : "public";
+    indent(out) << priv << " " << sum_interface_type(tstruct) << " Value;" << endl << endl;
+    indent(out) << "public " << sum_interface_type(tstruct) << " get() { return Value; }" << endl;
   }
 
   out << endl;
