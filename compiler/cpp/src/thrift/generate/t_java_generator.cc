@@ -400,14 +400,14 @@ public:
   	if (!t->annotations_.count("java.oneOf")) return false;
   	if (!prefix) return true;
   	*prefix = t->annotations_["java.oneOf"];
-  	if (*prefix == "1") *prefix = "GenX";
+  	if (*prefix == "1") *prefix = "Genx";
     return true;
   }
 
-  std::string sum_value_type(t_type *t) {
+  std::string sum_interface_type(t_type *t) {
     std::string prefix;
     is_sum_type(t, &prefix);
-    return prefix + "." + package_name_ + "." + t->get_name() + "Value";
+    return prefix + "." + package_name_ + "." + t->get_name();
   }
 
   std::string field_type_name(t_field *f, 
@@ -1522,7 +1522,7 @@ void t_java_generator::generate_java_struct_definition(ostream& out,
       out << declare_field(*m_iter, false, true) << endl;
     }
   } else {
-    indent(out) << "private " << sum_value_type(tstruct) << " Value;" << endl;
+    indent(out) << "private " << sum_interface_type(tstruct) << " Value;" << endl;
   }
 
   out << endl;
