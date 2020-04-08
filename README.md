@@ -71,7 +71,7 @@ Once this is done, the artifact can be referenced in pom.xml like this:
 	
 == Restrictions ==
 
-- optional, non-nullable values are always written when saving thrift
+- c#: optional, non-nullable values are always written when saving thrift
 	- because we don't have isset
 	- we could effectively get this behavior back by only writing non-default values
 	- but we're not writing from c#, so we don't care
@@ -92,3 +92,5 @@ typedef FooId BarId
 - typdefs of structs is untested & probably broken
 
 - GetHashCode() / Equals() generation for structs might be broken (untested with __isset) (we're not using this though)
+
+- in general there are tons of features of thrift we're not using that may have been broken by our mods
