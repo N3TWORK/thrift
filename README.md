@@ -52,6 +52,22 @@ mkdir cmake-build && cd cmake-build
 cmake ..
 make
 ```
+
+== Publishing `lib/java` to our mvn repo ==
+Latest version published 4/7/2020 from the `n3/tri` branch: `0.12.1-N3-TRIUMPH.1`.
+```
+cd lib/java
+./gradlew -PmavenUser=<mvnRepUn> -PmavenPassword=<mvnRepoPw> -Pmaven-repository-url=https://nexus.n3twork.com/repository/maven-releases/ -Prelease=true -Pthrift.version=<newVersion> uploadArchives
+```
+Once this is done, the artifact can be referenced in pom.xml like this:
+```
+<dependency>
+    <!-- Thrift 0.12.1 with support for the N3TWORK TTiny protocol. -->
+    <groupId>org.apache.thrift</groupId>
+    <artifactId>libthrift</artifactId>
+    <version>0.12.1-N3-TRIUMPH.1</version>
+</dependency>
+```
 	
 == Restrictions ==
 
