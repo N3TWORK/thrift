@@ -126,6 +126,9 @@ public:
                              t_const_value* value);
 
   void generate_csharp_typedef_definition(std::ostream& out, t_typedef* ttypedef);
+  void generate_csharp_typedef_body(std::ostream& out, t_type *t) {
+    
+  }
 
   void generate_csharp_struct(t_struct* tstruct, bool is_exception);
   void generate_csharp_union(t_struct* tunion);
@@ -208,8 +211,12 @@ public:
 
   // is t a thrift struct that will be represented as a c# struct (i.e.,, value type, not ref type class)? 
   bool is_cs_struct(t_type* t) {
-    return t->is_struct() && t->annotations_.count("csharp.struct") > 0;
+    return (t->is_struct() && t->annotations_.count("csharp.struct") > 0);
   }
+
+  bool is_value_wrapper(t_struct* t) {
+    return is_cs_struct(t) && t->get_members().size() == 1 && t->get_field_by_name("Value") != NULL;
+   }
 
   // if given struct has annotation "csharp.oneOf", then only a single field at a time can be set, and it will be stored in the type iface (or object, if none provded).
   bool is_sum_type(t_type* t, std::string *iface) {
@@ -816,12 +823,21 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
 
   string kind = is_cs_struct(tstruct) ? "struct" : "class";
+  bool vwrap = is_value_wrapper(tstruct) && !is_exception; // treat value wrapper classes liek we treat typedefs
+  string vnm, nm;
+  
   indent(out) << "public " << (is_final ? "sealed " : "") << "partial " << kind << " " << normalize_name(tstruct->get_name()) << " : ";
 
   if (is_exception) {
     out << "TException, ";
   }
   out << "TBase";
+
+  if(vwrap) {
+    nm = normalize_name(tstruct->get_name());
+    vnm = field_type_name(tstruct->get_field_by_name("Value"));
+	  out << ", TTypedef<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">";
+  }
 
   out << endl;
 
@@ -848,7 +864,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
       seen.insert(ft);
     }
   }
-  
+	
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     generate_csharp_doc(out, *m_iter);
     generate_property(out, tstruct, *m_iter, true, true);
@@ -864,6 +880,24 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     }
   }
   out << '\n';
+
+  if(vwrap) {
+    indent(out) << "public " << nm << "(" << vnm << " value) { Value = value; }" << endl;
+    indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
+    indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
+    indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
+    indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
+    indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
+    indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
+    if(!tstruct->annotations_.count("nostr")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
+    indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
+    indent(out) << "public void SetValue(" << vnm << " value) { Value = value; }\n";
+    if(!tstruct->annotations_.count("nocast")) {
+        // explicit cast operators, for convenience
+        indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
+        indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
+    }
+  }
 
   if (!is_cs_struct(tstruct)) {
     // We always want a default, no argument constructor for Reading
@@ -924,7 +958,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     generate_csharp_struct_equals(out, tstruct);
     generate_csharp_struct_hashcode(out, tstruct);
   }
-  generate_csharp_struct_tostring(out, tstruct);
+  if(!vwrap) generate_csharp_struct_tostring(out, tstruct);
   scope_down(out);
   out << endl;
 
