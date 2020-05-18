@@ -1,4 +1,4 @@
-/*
+/* -*- indent-tabs-mode: nil; tab-width: 2 -*- 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -71,6 +71,8 @@ public:
                                   const std::string& line_prefix,
                                   const std::string& contents,
                                   const std::string& comment_end);
+
+  virtual bool typedefs_after_structs() const { return false; }
 
   static void parse_options(const std::string& options, std::string& language,
                      std::map<std::string, std::string>& parsed_options);

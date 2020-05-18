@@ -1,4 +1,4 @@
-/*
+/* -*- indent-tabs-mode: nil; tab-width: 2 -*- 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -39,10 +39,12 @@ void t_generator::generate_program() {
   }
 
   // Generate typedefs
-  vector<t_typedef*> typedefs = program_->get_typedefs();
-  vector<t_typedef*>::iterator td_iter;
-  for (td_iter = typedefs.begin(); td_iter != typedefs.end(); ++td_iter) {
-    generate_typedef(*td_iter);
+  if(!typedefs_after_structs()) {
+    vector<t_typedef*> typedefs = program_->get_typedefs();
+    vector<t_typedef*>::iterator td_iter;
+    for (td_iter = typedefs.begin(); td_iter != typedefs.end(); ++td_iter) {
+      generate_typedef(*td_iter);
+    }
   }
 
   // Generate structs, exceptions, and unions in declared order
@@ -52,6 +54,15 @@ void t_generator::generate_program() {
   for (o_iter = objects.begin(); o_iter != objects.end(); ++o_iter) {
     generate_forward_declaration(*o_iter);
   }
+
+  if(typedefs_after_structs()) {
+    vector<t_typedef*> typedefs = program_->get_typedefs();
+    vector<t_typedef*>::iterator td_iter;
+    for (td_iter = typedefs.begin(); td_iter != typedefs.end(); ++td_iter) {
+      generate_typedef(*td_iter);
+    }
+  }
+  
   for (o_iter = objects.begin(); o_iter != objects.end(); ++o_iter) {
     if ((*o_iter)->is_xception()) {
       generate_xception(*o_iter);

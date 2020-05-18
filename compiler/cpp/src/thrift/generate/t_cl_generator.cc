@@ -1,4 +1,4 @@
-/*
+/* -*- indent-tabs-mode: nil; tab-width: 2 -*- 
  * Copyright (c) 2008- Patrick Collison <patrick@collison.ie>
  * Copyright (c) 2006- Facebook
  *
