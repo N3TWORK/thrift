@@ -181,10 +181,10 @@ public:
                                   t_field* tfield,
                                   string prefix = "",
                                   bool is_propertyless = false);
-  void generate_deserialize_container(std::ostream& out, t_type* ttype, string prefix = "");
+  void generate_deserialize_container(std::ostream& out, t_type* ttype, string prefix, t_field *f);
   void generate_deserialize_set_element(std::ostream& out, t_set* tset, string prefix = "");
   void generate_deserialize_map_element(std::ostream& out, t_map* tmap, string prefix = "");
-  void generate_deserialize_list_element(std::ostream& out, t_list* list, string prefix = "");
+  void generate_deserialize_list_element(std::ostream& out, t_list* list, string prefix, t_field *f);
   void generate_serialize_field(std::ostream& out,
                                 t_field* tfield,
                                 string prefix = "",
@@ -2628,7 +2628,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
     if (field_is_ref_wrapped(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
     generate_deserialize_struct(out, tfield, (t_struct*)type, name);
   } else if (type->is_container()) {
-    generate_deserialize_container(out, type, name);
+    generate_deserialize_container(out, type, name, tfield);
   } else if (type->is_base_type() || type->is_enum()) {
     indent(out) << name << " = ";
 
@@ -2685,7 +2685,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
 
 void t_csharp_generator::generate_deserialize_container(ostream& out,
                                                         t_type* ttype,
-                                                        string prefix) {
+                                                        string prefix, t_field* f) {
   scope_up(out);
 
   string obj;
@@ -2698,7 +2698,7 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
     obj = tmp("_list");
   }
 
-  indent(out) << prefix << " = new " << type_name(ttype, false, true) << "();" << endl;
+  indent(out) << prefix << " = new " << field_type_name(f, false) << "();" << endl;
   if (ttype->is_map()) {
     out << indent() << "TMap " << obj << " = iprot.ReadMapBegin();" << endl;
   } else if (ttype->is_set()) {
@@ -2718,7 +2718,7 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
   } else if (ttype->is_set()) {
     generate_deserialize_set_element(out, (t_set*)ttype, prefix);
   } else if (ttype->is_list()) {
-    generate_deserialize_list_element(out, (t_list*)ttype, prefix);
+    generate_deserialize_list_element(out, (t_list*)ttype, prefix, f);
   }
 
   scope_down(out);
@@ -2767,9 +2767,10 @@ void t_csharp_generator::generate_deserialize_set_element(ostream& out,
 
 void t_csharp_generator::generate_deserialize_list_element(ostream& out,
                                                            t_list* tlist,
-                                                           string prefix) {
+                                                           string prefix, t_field* f) {
   string elem = tmp("_elem");
   t_field felem(tlist->get_elem_type(), elem);
+  felem.annotations_ = f->annotations_;
 
   indent(out) << declare_field(&felem) << endl;
 
@@ -3085,7 +3086,18 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
   bool is_required = field_is_required(f);
   string nm = type_name(f->get_type(), false, false, true, is_required);
   string tt;
-  if (field_type_annotation(f, &tt)) nm = nm + "_<" + tt + ">";
+  if (field_type_annotation(f, &tt)) {
+    // this is soooo ugly
+    if(nm.find("<") != string::npos) {
+      int i = nm.find_last_of('<');
+      int j = nm.find_first_of('>');
+      string elt = nm.substr(i + 1, j - i - 1);
+      elt = elt + "_<" + tt + ">";
+      nm = nm.substr(0, i + 1) + elt + nm.substr(j);
+    } else {
+      nm = nm + "_<" + tt + ">";
+    }
+  }
   if (ref && field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
 }
@@ -3157,7 +3169,7 @@ string t_csharp_generator::base_type_name(t_base_type* tbase,
 }
 
 string t_csharp_generator::declare_field(t_field* tfield, bool init, string prefix) {
-  string result = type_name(tfield->get_type()) + " " + prefix + tfield->get_name();
+  string result = field_type_name(tfield) + " " + prefix + tfield->get_name();
   if (init) {
     t_type* ttype = tfield->get_type();
     while (ttype->is_typedef()) {
