@@ -1,3 +1,5 @@
+/* -*- indent-tabs-mode: nil; tab-width: 2 -*-  */
+
 /* Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -179,7 +181,6 @@ public:
                                   t_field* tfield,
                                   string prefix = "",
                                   bool is_propertyless = false);
-  void generate_deserialize_struct(std::ostream& out, t_struct* tstruct, string prefix = "");
   void generate_deserialize_container(std::ostream& out, t_type* ttype, string prefix = "");
   void generate_deserialize_set_element(std::ostream& out, t_set* tset, string prefix = "");
   void generate_deserialize_map_element(std::ostream& out, t_map* tmap, string prefix = "");
@@ -238,6 +239,14 @@ public:
      return is_cs_struct(unwrap_alias(f->get_type()));
   }
 
+  // if a field has a "type" annotation, the generated field type will be "Typedef<$T>$Name", where $Name is the original name, and $T is either the attribute value (if provided) or the field name
+  bool field_type_annotation(t_field* f, string *tt) {
+  	auto a = f->annotations_.find("type");
+  	if(a == f->annotations_.end()) return false;
+  	*tt = a->second;
+  	return true;
+  }
+
   t_type* unwrap_alias(t_type *t) {
     while(t->is_alias()) t = ((t_typedef*)t)->get_type();
     return t;
@@ -255,7 +264,7 @@ public:
     while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
     return t;
   }
-  string field_type_name(t_field* f);
+  string field_type_name(t_field* f, bool ref=true);
   string type_name(t_type* ttype,
                         bool in_countainer = false,
                         bool in_init = false,
@@ -289,6 +298,16 @@ public:
     return type_can_be_null(f->get_type());
   }
 
+  void generate_deserialize_struct(ostream& out, t_field* f, t_struct* tstruct, string prefix) {
+    if (union_ && tstruct->is_union()) {
+      out << indent() << prefix << " = " << type_name(tstruct) << ".Read(iprot);" << endl;
+    } else {
+      out << indent() << prefix << " = new " << field_type_name(f, false) << "();" << endl;
+      out << indent() << prefix << ".SetThriftDefaults();" << endl;
+      out << indent() << prefix << ".Read(iprot);" << endl;
+    }
+  }
+  
 private:
   string namespace_name_;
   ofstream_with_content_based_conditional_update f_service_;
@@ -476,6 +495,15 @@ void t_csharp_generator::start_csharp_namespace(ostream& out) {
   if (!namespace_name_.empty()) {
     out << "namespace " << namespace_name_ << "\n";
     scope_up(out);
+    auto typedefs = program_->get_typedefs();
+    for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
+      auto t = *i;
+      if(t->annotations_.count("alias")) {
+        auto u = t->get_type();
+        while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
+        indent(out) << "using " << t->get_symbolic() << " = " << type_name(u) + "\n";
+      }
+    }
   }
 }
 
@@ -919,7 +947,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
         } else {
           out << ", ";
         }
-        out << type_name((*m_iter)->get_type()) << " " << normalize_name((*m_iter)->get_name());
+        out << field_type_name(*m_iter) << " " << normalize_name((*m_iter)->get_name());
       }
     }
     out << ") {" << endl;
@@ -2592,7 +2620,7 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
 
   if (type->is_struct() || type->is_xception()) {
     if (field_is_ref_wrapped(tfield)) indent(out) << prop_name(tfield) << " = new " << field_type_name(tfield) << "();" << endl;
-    generate_deserialize_struct(out, (t_struct*)type, name);
+    generate_deserialize_struct(out, tfield, (t_struct*)type, name);
   } else if (type->is_container()) {
     generate_deserialize_container(out, type, name);
   } else if (type->is_base_type() || type->is_enum()) {
@@ -2646,18 +2674,6 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
     printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
            tfield->get_name().c_str(),
            type_name(type).c_str());
-  }
-}
-
-void t_csharp_generator::generate_deserialize_struct(ostream& out,
-                                                     t_struct* tstruct,
-                                                     string prefix) {
-  if (union_ && tstruct->is_union()) {
-    out << indent() << prefix << " = " << type_name(tstruct) << ".Read(iprot);" << endl;
-  } else {
-    out << indent() << prefix << " = new " << type_name(tstruct) << "();" << endl;
-    out << indent() << prefix << ".SetThriftDefaults();" << endl;
-    out << indent() << prefix << ".Read(iprot);" << endl;
   }
 }
 
@@ -3059,10 +3075,12 @@ string t_csharp_generator::prop_access(t_field* tfield, bool suppress_mapping) {
   return nm;
 }
 
-string t_csharp_generator::field_type_name(t_field* f) {
+string t_csharp_generator::field_type_name(t_field* f, bool ref) {
   bool is_required = field_is_required(f);
   string nm = type_name(f->get_type(), false, false, true, is_required);
-  if (field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
+  string tt;
+  if (field_type_annotation(f, &tt)) nm = nm + "_<" + tt + ">";
+  if (ref && field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
 }
 
