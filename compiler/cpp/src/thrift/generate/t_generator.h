@@ -99,6 +99,8 @@ public:
     return escape_string(constval->get_string());
   }
 
+  std::string quote_string(const std::string& s) { return '"' + escape_string(s) + '"'; }
+
   /**
    * Check if all identifiers are valid for the target language
    */

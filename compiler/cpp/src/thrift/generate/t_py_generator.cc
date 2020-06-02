@@ -346,6 +346,19 @@ public:
     return ttype->annotations_.find("python.immutable") != ttype->annotations_.end();
   }
 
+  string annotations_dict(t_field* f) {
+    if(f->annotations_.empty()) return "{}";
+    string s = "{";
+    bool comma = false;
+    for(auto a = f->annotations_.begin(); a != f->annotations_.end(); ++a) {
+      if(comma) s += ", ";
+      s += quote_string(a->first) + ": " + quote_string(a->second);
+      comma = true;
+    }
+    s += "}";
+    return s;
+  }
+
 private:
 
   /**
@@ -804,7 +817,8 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         << render_field_default_value(*m_iter) << ", " // default value [4]
         << type_to_python_enum_spec((*m_iter)->get_type()) << ", " // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
         << type_to_python_typedef_spec((*m_iter)->get_type()) << ", " // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
-        << (((*m_iter)->get_req() == t_field::T_REQUIRED) ? "True" : "False") // required field? [7]
+        << (((*m_iter)->get_req() == t_field::T_REQUIRED) ? "True" : "False") << ", " // required field? [7]
+        << annotations_dict(*m_iter) << ", " // annotations [8]
         << "),"
         << "  # " << sorted_keys_pos << endl;
 
