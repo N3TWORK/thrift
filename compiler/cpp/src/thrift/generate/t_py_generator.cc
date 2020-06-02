@@ -588,7 +588,7 @@ void t_py_generator::generate_typedef(t_typedef* ttypedef) {
 void t_py_generator::generate_enum(t_enum* tenum) {
   std::ostringstream to_string_mapping, from_string_mapping;
 
-  f_types_ << endl << endl << "class " << tenum->get_name() << (gen_newstyle_ ? "(object)" : "")
+  f_types_ << endl << endl << "class " << tenum->get_name() << (gen_newstyle_ ? "(int)" : "")
            << (gen_dynamic_ ? "(" + gen_dynbaseclass_ + ")" : "") << ":" << endl;
   indent_up();
   generate_python_docstring(f_types_, tenum);
