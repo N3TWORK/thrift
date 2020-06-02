@@ -243,8 +243,8 @@ public:
   bool field_type_annotation(t_field* f, string *tt) {
   	auto a = f->annotations_.find("type");
   	if(a == f->annotations_.end()) return false;
-  	if(a->second == "1") *tt = f->get_name();
-  	else *tt = a->second;
+  	if(a->second == "1") throw "'type' missing value (for field: " + f->get_name() + " )";
+  	*tt = a->second;
   	return true;
   }
 
@@ -3092,10 +3092,10 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
       int i = nm.find_last_of('<');
       int j = nm.find_first_of('>');
       string elt = nm.substr(i + 1, j - i - 1);
-      elt = elt + "_<" + tt + ">";
+      elt = elt + "<" + tt + ">";
       nm = nm.substr(0, i + 1) + elt + nm.substr(j);
     } else {
-      nm = nm + "_<" + tt + ">";
+      nm = nm + "<" + tt + ">";
     }
   }
   if (ref && field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
