@@ -243,7 +243,8 @@ public:
   bool field_type_annotation(t_field* f, string *tt) {
   	auto a = f->annotations_.find("type");
   	if(a == f->annotations_.end()) return false;
-  	*tt = a->second;
+  	if(a->second == "1") *tt = f->get_name();
+  	else *tt = a->second;
   	return true;
   }
 
@@ -501,7 +502,7 @@ void t_csharp_generator::start_csharp_namespace(ostream& out) {
       if(t->annotations_.count("alias")) {
         auto u = t->get_type();
         while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
-        indent(out) << "using " << t->get_symbolic() << " = " << type_name(u) + "\n";
+        indent(out) << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
       }
     }
   }
@@ -885,6 +886,11 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     std::set<string> seen;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       string ft = field_type_name(*m_iter);
+      string tt;
+      if(field_type_annotation(*m_iter, &tt)) {
+        // std::cerr << "type annotation: " << tt << endl;
+        ft += "<" + tt + ">";
+      }
       if(seen.count(ft)) {
         throw "type '" + tstruct->get_name() + "' annotated with 'csharp.oneOf' contains fields w/ the same type ('" + (*m_iter)->get_name() + "' and at least one other field)\n" + 
           "This is not supported (ask Erin to fix it)\n";

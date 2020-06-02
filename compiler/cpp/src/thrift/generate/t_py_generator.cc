@@ -492,6 +492,18 @@ string t_py_generator::render_includes() {
   for (size_t i = 0; i < includes.size(); ++i) {
     result += "import " + get_real_py_module(includes[i], gen_twisted_, package_prefix_) + ".ttypes\n";
   }
+  auto typedefs = program_->get_typedefs();
+  if(!typedefs.empty()) {
+    result += "\n";
+    for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
+      auto t = *i;
+      if(t->annotations_.count("alias")) {
+        auto u = t->get_type();
+        while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
+        result += t->get_symbolic() + " = " + type_name(u) + "\n";
+      }
+    }
+  }
   return result;
 }
 
