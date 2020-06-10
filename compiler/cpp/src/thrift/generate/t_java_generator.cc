@@ -407,7 +407,7 @@ public:
   std::string sum_interface_type(t_type *t) {
     std::string prefix;
     is_sum_type(t, &prefix);
-    return prefix + "." + package_name_ + "." + t->get_name();
+    return prefix + "." + package_name_ + ".I" + t->get_name();
   }
 
   std::string field_type_name(t_field *f, 
@@ -415,10 +415,16 @@ public:
                         bool in_init = false,
                         bool skip_generic = false,
                         bool force_namespace = false) {
-    std::string nm = type_name(get_true_type(f->get_type()), in_container, in_init, skip_generic, force_namespace);
+    auto ft = get_true_type(f->get_type());
+    std::string nm = type_name(ft, in_container, in_init, skip_generic, force_namespace);
     std::string prefix;
-    if(!is_sum_type(f->parent_struct, &prefix)) return nm;
-    return prefix + "." + package_name_ + "." + nm;
+    if(is_sum_type(f->parent_struct, &prefix)) {
+      return prefix + "." + package_name_ + "." + nm;
+    }
+    if(is_sum_type(ft, &prefix)) {
+      return prefix + "." + package_name_ + "." + nm;
+    }
+    return nm;
   }
 
   std::string getter_or(t_field *f) {
@@ -4108,6 +4114,7 @@ void t_java_generator::generate_deserialize_list_element(ostream& out,
   t_field felem(tlist->get_elem_type(), elem);
 
   indent(out) << declare_field(&felem, reuse_objects_, false) << endl;
+  indent(out) << "// hello?" << endl;
 
   // For loop iterates over elements
   string i = tmp("_i");
@@ -4442,7 +4449,7 @@ string t_java_generator::declare_field(t_field* tfield, bool init, bool comment)
   if (type_can_be_null(ttype)) {
     result += java_nullable_annotation() + " ";
   }
-  result += type_name(tfield->get_type()) + " " + tfield->get_name();
+  result += field_type_name(tfield) + " " + tfield->get_name() + " /* hallo */ ";
   if (init) {
     if (ttype->is_base_type() && tfield->get_value() != NULL) {
       std::ofstream dummy;
@@ -4471,9 +4478,9 @@ string t_java_generator::declare_field(t_field* tfield, bool init, bool comment)
     } else if (ttype->is_enum()) {
       result += " = null";
     } else if (ttype->is_container()) {
-      result += " = new " + type_name(ttype, false, true) + "()";
+      result += " = new " + field_type_name(tfield, false, true) + "()";
     } else {
-      result += " = new " + type_name(ttype, false, true) + "()";
+      result += " = new " + field_type_name(tfield, false, true) + "()";
       ;
     }
   }
