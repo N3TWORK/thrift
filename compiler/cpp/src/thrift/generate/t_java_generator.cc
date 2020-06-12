@@ -410,7 +410,7 @@ public:
     return prefix + "." + package_name_ + ".I" + t->get_name();
   }
 
-  std::string field_type_name(t_field *f, 
+  std::string field_type_name(t_field *f,
                         bool in_container = false,
                         bool in_init = false,
                         bool skip_generic = false,
@@ -419,9 +419,6 @@ public:
     std::string nm = type_name(ft, in_container, in_init, skip_generic, force_namespace);
     std::string prefix;
     if(is_sum_type(f->parent_struct, &prefix)) {
-      return prefix + "." + package_name_ + "." + nm;
-    }
-    if(is_sum_type(ft, &prefix)) {
       return prefix + "." + package_name_ + "." + nm;
     }
     return nm;
