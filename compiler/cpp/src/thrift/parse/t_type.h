@@ -87,6 +87,9 @@ public:
 
   std::map<std::string, std::string> annotations_;
 
+  // if set, use a custom derived type for this class instead of the generated thrif typee (this supports java.oneOf)
+  std::string xname_;
+
 protected:
   t_type() : program_(NULL) { ; }
 

@@ -407,7 +407,7 @@ public:
   std::string sum_interface_type(t_type *t) {
     std::string prefix;
     is_sum_type(t, &prefix);
-    return prefix + "." + package_name_ + "." + t->get_name();
+    return prefix + "." + package_name_ + ".I" + t->get_name();
   }
 
   std::string field_type_name(t_field *f, 
@@ -415,13 +415,12 @@ public:
                         bool in_init = false,
                         bool skip_generic = false,
                         bool force_namespace = false) {
-    std::string nm = type_name(get_true_type(f->get_type()), in_container, in_init, skip_generic, force_namespace);
-    std::string prefix;
-    if(!is_sum_type(f->parent_struct, &prefix)) return nm;
-    return prefix + "." + package_name_ + "." + nm;
+    // this used to have a purpose, but doesn't anymore
+    return type_name(get_true_type(f->get_type()), in_container, in_init, skip_generic, force_namespace);
   }
 
-  std::string getter_or(t_field *f) {
+  // return access to given field
+  std::string getter(t_field *f) {
     if(!is_sum_type(f->parent_struct)) return f->get_name();
     std::string nm = get_cap_name(f->get_name());
     return (get_true_type(f->get_type())->is_bool() ? "is" + nm : "get" + nm) + "()";
@@ -478,6 +477,19 @@ void t_java_generator::init_generator() {
   }
 
   package_dir_ = subdir;
+
+  // scan for oneOf declarations -- any types used as fields inside oneOf will use the custom name
+  for(auto si = program_->get_structs().begin(); si != program_->get_structs().end(); ++si) {
+    auto s = *si;
+    string prefix;
+    bool sum = is_sum_type(s, &prefix);
+    for(auto fi = s->get_members().begin(); fi != s->get_members().end(); ++fi) {
+      auto f = *fi;
+      auto t = const_cast<t_type*>(get_true_type(f->get_type()));
+      if(sum) t->xname_ = prefix + "." + package_name_ + "." + t->get_name();
+      f->parent_struct = s;
+    }
+  }
 }
 
 /**
@@ -815,12 +827,6 @@ string t_java_generator::render_const_value(ostream& out, t_type* type, t_const_
  * @param tstruct The struct definition
  */
 void t_java_generator::generate_struct(t_struct* tstruct) {
-  const vector<t_field*>& fields = tstruct->get_members();
-  for(vector<t_field*>::const_iterator f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    t_field *f = *f_iter;
-    f->parent_struct = tstruct;
-  }
-  
   if (tstruct->is_union()) {
     generate_java_union(tstruct);
   } else {
@@ -1645,7 +1651,8 @@ void t_java_generator::generate_java_struct_definition(ostream& out,
     indent(out) << "}" << endl << endl;
   }
 
-  // clone methods and copy constructors disabled because they don't play well with java.oneOf
+  // clone methods and copy constructors
+  // DISABLED because they don't play well with java.oneOf
   #if 0
   // copy constructor
   indent(out) << "/**" << endl;
@@ -1967,52 +1974,59 @@ void t_java_generator::generate_java_struct_equality(ostream& out, t_struct* tst
   indent_up();
   out << indent() << "if (that == null)" << endl << indent() << "  return false;" << endl
       << indent() << "if (this == that)" << endl << indent() << "  return true;"  << endl;
-
-  const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
-  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+  const vector<t_field*>& members = tstruct->get_members();
+  if(is_sum_type(tstruct)) {
+    out << "    if (Value == null)\n"
+        << "      return that.Value == null;\n"
+        << "    return Value.equals(that.Value);\n";
+  } else {
+
+    
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      out << endl;
+
+      t_type* t = get_true_type((*m_iter)->get_type());
+      // Most existing Thrift code does not use isset or optional/required,
+      // so we treat "default" fields as required.
+      bool is_optional = (*m_iter)->get_req() == t_field::T_OPTIONAL;
+      bool can_be_null = type_can_be_null(t);
+      string name = (*m_iter)->get_name();
+
+      string this_present = "true";
+      string that_present = "true";
+      string unequal;
+
+      if (is_optional || can_be_null) {
+        this_present += " && this." + generate_isset_check(*m_iter);
+        that_present += " && that." + generate_isset_check(*m_iter);
+      }
+
+      out << indent() << "boolean this_present_" << name << " = " << this_present << ";" << endl
+          << indent() << "boolean that_present_" << name << " = " << that_present << ";" << endl
+          << indent() << "if ("
+          << "this_present_" << name << " || that_present_" << name << ") {" << endl;
+      indent_up();
+      out << indent() << "if (!("
+          << "this_present_" << name << " && that_present_" << name << "))" << endl << indent()
+          << "  return false;" << endl;
+
+      std::string get = getter(*m_iter);
+      if (t->is_binary()) {
+        unequal = "!this." + get + ".equals(that." + get + ")";
+      } else if (can_be_null) {
+        unequal = "!this." + get + ".equals(that." + get + ")";
+      } else {
+        unequal = "this." + get + " != that." + get;
+      }
+
+      out << indent() << "if (" << unequal << ")" << endl << indent() << "  return false;" << endl;
+
+      scope_down(out);
+    }
     out << endl;
-
-    t_type* t = get_true_type((*m_iter)->get_type());
-    // Most existing Thrift code does not use isset or optional/required,
-    // so we treat "default" fields as required.
-    bool is_optional = (*m_iter)->get_req() == t_field::T_OPTIONAL;
-    bool can_be_null = type_can_be_null(t);
-    string name = (*m_iter)->get_name();
-
-    string this_present = "true";
-    string that_present = "true";
-    string unequal;
-
-    if (is_optional || can_be_null) {
-      this_present += " && this." + generate_isset_check(*m_iter);
-      that_present += " && that." + generate_isset_check(*m_iter);
-    }
-
-    out << indent() << "boolean this_present_" << name << " = " << this_present << ";" << endl
-        << indent() << "boolean that_present_" << name << " = " << that_present << ";" << endl
-        << indent() << "if ("
-        << "this_present_" << name << " || that_present_" << name << ") {" << endl;
-    indent_up();
-    out << indent() << "if (!("
-        << "this_present_" << name << " && that_present_" << name << "))" << endl << indent()
-        << "  return false;" << endl;
-
-    std::string get = getter_or(*m_iter);
-    if (t->is_binary()) {
-      unequal = "!this." + get + ".equals(that." + get + ")";
-    } else if (can_be_null) {
-      unequal = "!this." + get + ".equals(that." + get + ")";
-    } else {
-      unequal = "this." + get + " != that." + get;
-    }
-
-    out << indent() << "if (" << unequal << ")" << endl << indent() << "  return false;" << endl;
-
-    scope_down(out);
+    indent(out) << "return true;" << endl;
   }
-  out << endl;
-  indent(out) << "return true;" << endl;
   scope_down(out);
   out << endl;
 
@@ -2021,73 +2035,77 @@ void t_java_generator::generate_java_struct_equality(ostream& out, t_struct* tst
   const int B_NO = 524287;
   out << indent() << "@Override" << endl << indent() << "public int hashCode() {" << endl;
   indent_up();
-  indent(out) << "int hashCode = 1;" << endl;
+  if(is_sum_type(tstruct)) {
+    indent(out) << "return Value == null ? 0 : Value.hashCode();\n";
+  } else {
+  
+    indent(out) << "int hashCode = 1;" << endl;
 
-  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    out << endl;
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      out << endl;
 
-    t_type* t = get_true_type((*m_iter)->get_type());
-    bool is_optional = (*m_iter)->get_req() == t_field::T_OPTIONAL;
-    bool can_be_null = type_can_be_null(t);
-    string name = (*m_iter)->get_name();
-    std::string get = getter_or(*m_iter);
+      t_type* t = get_true_type((*m_iter)->get_type());
+      bool is_optional = (*m_iter)->get_req() == t_field::T_OPTIONAL;
+      bool can_be_null = type_can_be_null(t);
+      string name = (*m_iter)->get_name();
+      std::string get = getter(*m_iter);
 
-    if (is_optional || can_be_null) {
-      indent(out) << "hashCode = hashCode * " << MUL << " + ((" << generate_isset_check(*m_iter)
-                  << ") ? " << B_YES << " : " << B_NO << ");" << endl;
-    }
-
-    if (is_optional || can_be_null) {
-      indent(out) << "if (" + generate_isset_check(*m_iter) + ")" << endl;
-      indent_up();
-    }
-
-    if (t->is_enum()) {
-      indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ".getValue();" << endl;
-    } else if (t->is_base_type()) {
-      switch(((t_base_type*)t)->get_base()) {
-      case t_base_type::TYPE_STRING:
-        indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ".hashCode();" << endl;
-        break;
-      case t_base_type::TYPE_BOOL:
-        indent(out) << "hashCode = hashCode * " << MUL << " + ((" << get << ") ? "
-                    << B_YES << " : " << B_NO << ");" << endl;
-        break;
-      case t_base_type::TYPE_I8:
-        indent(out) << "hashCode = hashCode * " << MUL << " + (int) (" << get << ");" << endl;
-        break;
-      case t_base_type::TYPE_I16:
-      case t_base_type::TYPE_I32:
-        indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ";" << endl;
-        break;
-      case t_base_type::TYPE_I64:
-      case t_base_type::TYPE_DOUBLE:
-        indent(out) << "hashCode = hashCode * " << MUL << " + org.apache.thrift.TBaseHelper.hashCode(" << get << ");" << endl;
-        break;
-      case t_base_type::TYPE_VOID:
-        throw std::logic_error("compiler error: a struct field cannot be void");
-      default:
-        throw std::logic_error("compiler error: the following base type has no hashcode generator: " +
-               t_base_type::t_base_name(((t_base_type*)t)->get_base()));
+      if (is_optional || can_be_null) {
+        indent(out) << "hashCode = hashCode * " << MUL << " + ((" << generate_isset_check(*m_iter)
+                    << ") ? " << B_YES << " : " << B_NO << ");" << endl;
       }
-    } else {
-      indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ".hashCode();" << endl;
-    }
 
-    if (is_optional || can_be_null) {
-      indent_down();
+      if (is_optional || can_be_null) {
+        indent(out) << "if (" + generate_isset_check(*m_iter) + ")" << endl;
+        indent_up();
+      }
+
+      if (t->is_enum()) {
+        indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ".getValue();" << endl;
+      } else if (t->is_base_type()) {
+        switch(((t_base_type*)t)->get_base()) {
+        case t_base_type::TYPE_STRING:
+          indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ".hashCode();" << endl;
+          break;
+        case t_base_type::TYPE_BOOL:
+          indent(out) << "hashCode = hashCode * " << MUL << " + ((" << get << ") ? "
+                      << B_YES << " : " << B_NO << ");" << endl;
+          break;
+        case t_base_type::TYPE_I8:
+          indent(out) << "hashCode = hashCode * " << MUL << " + (int) (" << get << ");" << endl;
+          break;
+        case t_base_type::TYPE_I16:
+        case t_base_type::TYPE_I32:
+          indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ";" << endl;
+          break;
+        case t_base_type::TYPE_I64:
+        case t_base_type::TYPE_DOUBLE:
+          indent(out) << "hashCode = hashCode * " << MUL << " + org.apache.thrift.TBaseHelper.hashCode(" << get << ");" << endl;
+          break;
+        case t_base_type::TYPE_VOID:
+          throw std::logic_error("compiler error: a struct field cannot be void");
+        default:
+          throw std::logic_error("compiler error: the following base type has no hashcode generator: " +
+                 t_base_type::t_base_name(((t_base_type*)t)->get_base()));
+        }
+      } else {
+        indent(out) << "hashCode = hashCode * " << MUL << " + " << get << ".hashCode();" << endl;
+      }
+
+      if (is_optional || can_be_null) {
+        indent_down();
+      }
     }
+    out << endl;
+    indent(out) << "return hashCode;" << endl;
   }
-
-  out << endl;
-  indent(out) << "return hashCode;" << endl;
   indent_down();
   indent(out) << "}" << endl << endl;
 }
 
 void t_java_generator::generate_java_struct_compare_to(ostream& out, t_struct* tstruct) {
   indent(out) << "@Override" << endl;
-  indent(out) << "public int compareTo(" << type_name(tstruct) << " other) {" << endl;
+  indent(out) << "public int compareTo(" << tstruct->get_name() << " other) {" << endl;
   indent_up();
 
   indent(out) << "if (!getClass().equals(other.getClass())) {" << endl;
@@ -2108,7 +2126,7 @@ void t_java_generator::generate_java_struct_compare_to(ostream& out, t_struct* t
     indent(out) << "  return lastComparison;" << endl;
     indent(out) << "}" << endl;
 
-    std::string get = getter_or(*m_iter);
+    std::string get = getter(*m_iter);
     indent(out) << "if (" << generate_isset_check(field) << ") {" << endl;
     indent(out) << "  lastComparison = org.apache.thrift.TBaseHelper.compareTo(this."
                 << get << ", other." << get << ");" << endl;
@@ -2150,22 +2168,22 @@ void t_java_generator::generate_java_validator(ostream& out, t_struct* tstruct) 
 
   out << indent() << "// check for required fields" << endl;
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    std::string get = getter_or(*f_iter);
+    std::string get = getter(*f_iter);
     if ((*f_iter)->get_req() == t_field::T_REQUIRED) {
       if (bean_style_) {
         out << indent() << "if (!" << generate_isset_check(*f_iter) << ") {" << endl << indent()
             << "  throw new org.apache.thrift.protocol.TProtocolException(\"Required field '"
-            << (*f_iter)->get_name() << "' is unset! Struct:\" + toString());" << endl << indent()
+            << getter(*f_iter) << "' is unset! Struct:\" + toString());" << endl << indent()
             << "}" << endl << endl;
       } else {
         if (type_can_be_null((*f_iter)->get_type())) {
-          indent(out) << "if (" << (*f_iter)->get_name() << " == null) {" << endl;
+          indent(out) << "if (" << getter(*f_iter) << " == null) {" << endl;
           indent(out)
               << "  throw new org.apache.thrift.protocol.TProtocolException(\"Required field '"
-              << (*f_iter)->get_name() << "' was not present! Struct: \" + toString());" << endl;
+              << getter(*f_iter) << "' was not present! Struct: \" + toString());" << endl;
           indent(out) << "}" << endl;
         } else {
-          indent(out) << "// alas, we cannot check '" << (*f_iter)->get_name()
+          indent(out) << "// alas, we cannot check '" << getter(*f_iter)
                       << "' because it's a primitive and you chose the non-beans generator."
                       << endl;
         }
@@ -2177,8 +2195,8 @@ void t_java_generator::generate_java_validator(ostream& out, t_struct* tstruct) 
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
     t_type* type = (*f_iter)->get_type();
     if (type->is_struct() && !((t_struct*)type)->is_union()) {
-      out << indent() << "if (" << (*f_iter)->get_name() << " != null) {" << endl;
-      out << indent() << "  " << (*f_iter)->get_name() << ".validate();" << endl;
+      out << indent() << "if (" << getter(*f_iter) << " != null) {" << endl;
+      out << indent() << "  " << getter(*f_iter) << ".validate();" << endl;
       out << indent() << "}" << endl;
     }
   }
@@ -2272,7 +2290,7 @@ void t_java_generator::generate_generic_field_getters_setters(std::ostream& out,
   std::ostringstream getter_stream;
   std::ostringstream setter_stream;
 
-  // build up the bodies of both the getter_or and setter at once
+  // build up the bodies of both the getter and setter at once
   const vector<t_field*>& fields = tstruct->get_members();
   vector<t_field*>::const_iterator f_iter;
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
@@ -2296,7 +2314,7 @@ void t_java_generator::generate_generic_field_getters_setters(std::ostream& out,
   indent(out) << "  }" << endl;
   indent(out) << "}" << endl << endl;
 
-  // create the getter_or
+  // create the getter
   indent(out) << java_nullable_annotation() << endl;
   indent(out) << "public java.lang.Object getFieldValue(_Fields field) {" << endl;
   indent_up();
@@ -2714,7 +2732,7 @@ void t_java_generator::generate_java_struct_tostring(ostream& out, t_struct* tst
     }
 
     t_field* field = (*f_iter);
-    std::string get = getter_or(*f_iter);
+    std::string get = getter(*f_iter);
 
     if (!first) {
       indent(out) << "if (!first) sb.append(\", \");" << endl;
@@ -4146,7 +4164,7 @@ void t_java_generator::generate_serialize_field(ostream& out,
                                                 bool has_metadata) {
   t_type* type = get_true_type(tfield->get_type());
 
-  string get = getter_or(tfield);
+  string get = getter(tfield);
 
   // Do nothing for void types
   if (type->is_void()) {
@@ -4381,6 +4399,8 @@ string t_java_generator::type_name(t_type* ttype,
     }
     return prefix + (skip_generic ? "" : "<" + type_name(tlist->get_elem_type(), true) + ">");
   }
+
+  if(!ttype->xname_.empty()) return ttype->xname_;
 
   // Check for namespacing
   t_program* program = ttype->get_program();
@@ -5318,7 +5338,7 @@ void t_java_generator::generate_standard_writer(ostream& out, t_struct* tstruct,
   indent(out) << "oprot.writeStructBegin(STRUCT_DESC);" << endl;
 
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    string get = getter_or(*f_iter);
+    string get = getter(*f_iter);
     bool null_allowed = type_can_be_null((*f_iter)->get_type());
     if (null_allowed) {
       out << indent() << "if (struct." << get << " != null) {" << endl;
