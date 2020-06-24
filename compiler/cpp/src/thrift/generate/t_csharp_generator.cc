@@ -525,7 +525,7 @@ string t_csharp_generator::csharp_type_usings() {
 }
 
 string t_csharp_generator::csharp_thrift_usings() {
-  return string() + "using Thrift.Protocol;\n" + "using Thrift.Transport;\n";
+  return string() + "using Thrift.Protocol;\n" + "using Thrift.Transport;\n" + "#pragma warning disable CS0472 // comparison of non-nullable types (easier to always generate comparisons)\n";
 }
 
 void t_csharp_generator::close_generator() {
@@ -564,8 +564,8 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
   indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
   indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
-  indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
-  indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
+  indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value == null : a.Value.CompareTo(b.Value) == 0;\n";
+  indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value != null : a.Value.CompareTo(b.Value) != 0;\n";
   indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
   if(!ttypedef->annotations_.count("nostr")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
   indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
