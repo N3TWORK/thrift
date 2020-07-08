@@ -1340,6 +1340,8 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
         indent(out) << "__first = false;" << endl;
       }
       indent(out) << "__sb.Append(\"" << prop_name((*f_iter)) << ": \");" << endl;
+    } else if(!had_required) {
+      indent(out) << "__sb.Append(\"" << prop_name((*f_iter)) << ": \");" << endl;
     } else {
       indent(out) << "__sb.Append(\", " << prop_name((*f_iter)) << ": \");" << endl;
     }
