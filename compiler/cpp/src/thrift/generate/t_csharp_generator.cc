@@ -561,9 +561,9 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "public " << vnm << " Value;\n";
   indent(out) << endl;
   indent(out) << "public " << nm << "(" << vnm << " value) { Value = value; }" << endl;
-  indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
-  indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
-  indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
+  indent(out) << "public bool Equals(" << nm << " other) => Value != null ? this.Value.Equals(other.Value) : other.Value == null;\n";
+  indent(out) << "public int CompareTo(" << nm << " other) => Value != null ? Value.CompareTo(other.Value) : other.Value != null ? -1 : 0;\n";
+  indent(out) << "public override int GetHashCode() => Value != null ? Value.GetHashCode() : 0;\n";
   indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value == null : a.Value.CompareTo(b.Value) == 0;\n";
   indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value != null : a.Value.CompareTo(b.Value) != 0;\n";
   indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
