@@ -137,7 +137,7 @@ public:
   }
 
   virtual string indent_str() const {
-    return "    ";
+    return "\t";
   }
 
   virtual bool typedefs_after_structs() const { return true; }
@@ -864,7 +864,19 @@ void t_py_generator::generate_py_struct_definition(ostream& out,
   indent_up();
   generate_python_docstring(out, tstruct);
 
-  out << endl;
+  // annotations
+  if(tstruct->annotations_.empty()) {
+    indent(out) << "annotations = {}\n";
+  } else {
+    indent(out) << "annotations = {\n";
+    indent_up();
+    for(auto a = tstruct->annotations_.begin(); a != tstruct->annotations_.end(); ++a) {
+      indent(out) << quote_string(a->first) << ": " + quote_string(a->second) << ",";
+    }
+    indent_down();
+    out << "\n";
+    indent(out) << "}\n";
+  }
 
   /*
      Here we generate the structure specification for the fastbinary codec.
@@ -2623,7 +2635,9 @@ void t_py_generator::generate_serialize_list_element(ostream& out, t_list* tlist
  * Generates the docstring for a given struct.
  */
 void t_py_generator::generate_python_docstring(ostream& out, t_struct* tstruct) {
-  generate_python_docstring(out, tstruct, tstruct, "Attributes");
+  // more annoying than helpful, so commenting out (EK)
+  
+  // generate_python_docstring(out, tstruct, tstruct, "Attributes");
 }
 
 /**
