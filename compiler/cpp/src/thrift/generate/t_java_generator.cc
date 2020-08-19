@@ -971,6 +971,8 @@ void t_java_generator::generate_union_constructor(ostream& out, t_struct* tstruc
   indent(out) << "  super(setField, value);" << endl;
   indent(out) << "}" << endl << endl;
 
+  // clone methods and copy constructors disabled because they don't play well with java.oneOf
+  #if 0
   indent(out) << "public " << type_name(tstruct) << "(" << type_name(tstruct) << " other) {"
               << endl;
   indent(out) << "  super(other);" << endl;
@@ -979,6 +981,7 @@ void t_java_generator::generate_union_constructor(ostream& out, t_struct* tstruc
   indent(out) << "public " << tstruct->get_name() << " deepCopy() {" << endl;
   indent(out) << "  return new " << tstruct->get_name() << "(this);" << endl;
   indent(out) << "}" << endl << endl;
+  #endif
 
   // generate "constructors" for each field
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
