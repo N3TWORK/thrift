@@ -1161,6 +1161,7 @@ void t_py_generator::generate_py_struct_writer(ostream& out, t_struct* tstruct) 
   indent(out) << "def write(self, oprot):" << endl;
   indent_up();
 
+  indent(out) << "self.validate()" << endl;
   indent(out) << "if oprot._fast_encode is not None and self.thrift_spec is not None:" << endl;
   indent_up();
 
@@ -1212,8 +1213,8 @@ void t_py_generator::generate_py_struct_required_validator(ostream& out, t_struc
       t_field* field = (*f_iter);
       if (field->get_req() == t_field::T_REQUIRED) {
         indent(out) << "if self." << field->get_name() << " is None:" << endl;
-        indent(out) << indent_str() << "raise TProtocolException(message='Required field "
-                    << field->get_name() << " is unset!')" << endl;
+        indent(out) << indent_str() << "raise TProtocolException(message='" << type_name(tstruct) << ": required field "
+                    << field->get_name() << " is not set')" << endl;
       }
     }
   }
