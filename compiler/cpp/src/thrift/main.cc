@@ -741,6 +741,9 @@ void help() {
  * runtime.
  */
 void validate_const_rec(std::string name, t_type* type, t_const_value* value) {
+  // short-circuit -- we take non-matching consts and convert them annotations
+  return;
+
   if (type->is_void()) {
     throw "type error: cannot declare a void const: " + name;
   }
