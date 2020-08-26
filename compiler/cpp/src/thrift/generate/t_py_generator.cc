@@ -437,7 +437,7 @@ protected:
  *
  * @param tprogram The program to generate
  */
-void t_py_generator::init_generator() {
+void t_py_generator::init_generator() {  
   // Make output directory
   string module = get_real_py_module(program_, gen_twisted_);
   package_dir_ = get_out_dir();

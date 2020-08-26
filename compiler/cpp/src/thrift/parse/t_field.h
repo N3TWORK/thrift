@@ -46,7 +46,7 @@ public:
       xsd_nillable_(false),
       xsd_attrs_(NULL),
       reference_(false),
-      parent_struct(0) {}
+      parent_struct_(0) {}
 
   t_field(t_type* type, std::string name, int32_t key)
     : type_(type),
@@ -58,7 +58,7 @@ public:
       xsd_nillable_(false),
       xsd_attrs_(NULL),
       reference_(false),
-      parent_struct(0) {}
+      parent_struct_(0) {}
 
   ~t_field() {}
 
@@ -111,7 +111,7 @@ public:
 
   void set_reference(bool reference) { reference_ = reference; }
 
-  t_struct *parent_struct; // HACK FOR JAVA: containing struct (i'm sorry (EK)
+  t_struct *parent_struct_; // HACK FOR JAVA: containing struct
 
 private:
   t_type* type_;

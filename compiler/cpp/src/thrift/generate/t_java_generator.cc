@@ -421,7 +421,7 @@ public:
 
   // return access to given field
   std::string getter(t_field *f) {
-    if(!is_sum_type(f->parent_struct)) return f->get_name();
+    if(!is_sum_type(f->parent_struct_)) return f->get_name();
     std::string nm = get_cap_name(f->get_name());
     return (get_true_type(f->get_type())->is_bool() ? "is" + nm : "get" + nm) + "()";
   }
@@ -487,7 +487,7 @@ void t_java_generator::init_generator() {
       auto f = *fi;
       auto t = const_cast<t_type*>(get_true_type(f->get_type()));
       if(sum) t->xname_ = prefix + "." + package_name_ + "." + t->get_name();
-      f->parent_struct = s;
+      f->parent_struct_ = s;
     }
   }
 }
@@ -3842,7 +3842,7 @@ void t_java_generator::generate_deserialize_field(ostream& out,
                                                   t_field* tfield,
                                                   string prefix,
                                                   bool has_metadata, bool fancy) {
-  if(fancy && is_sum_type(tfield->parent_struct)) {
+  if(fancy && is_sum_type(tfield->parent_struct_)) {
     std::string v = "v" + tfield->get_name();
     indent(out) << field_type_name(tfield) << " " << v << ";" << endl;
     generate_deserialize_field(out, tfield, "v", true, false);
