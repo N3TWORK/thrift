@@ -567,7 +567,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value == null : a.Value.CompareTo(b.Value) == 0;\n";
   indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value != null : a.Value.CompareTo(b.Value) != 0;\n";
   indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
-  if(!ttypedef->annotations_.count("nostr")) indent(out) << "public override string ToString() { return Value != null ? Value.ToString() : \"<null>\"; }\n";
+  if(!ttypedef->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value != null ? Value.ToString() : \"<null>\"; }\n";
   indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
   indent(out) << "public void SetValue(" << vnm << " value) { Value = value; }\n";
   if(!ttypedef->annotations_.count("nocast")) {
@@ -923,7 +923,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
     indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
     indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
-    if(!tstruct->annotations_.count("nostr")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
+    if(!tstruct->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
     indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
     indent(out) << "public void SetValue(" << vnm << " value) { Value = value; }\n";
     if(!tstruct->annotations_.count("nocast")) {
@@ -992,7 +992,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     generate_csharp_struct_equals(out, tstruct);
     generate_csharp_struct_hashcode(out, tstruct);
   }
-  if(!vwrap) generate_csharp_struct_tostring(out, tstruct);
+  if(!vwrap && !tstruct->annotations_.count("csharp.customToString")) generate_csharp_struct_tostring(out, tstruct);
   scope_down(out);
   out << endl;
 
