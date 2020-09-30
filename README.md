@@ -47,8 +47,8 @@ C#:
  * to disable this behavior, use the `alias` attribute:
 	 * `typedef (alias) string FooId // will use string in generated source`
 	 * alias typedefs generate a corresponding "using" in C#
- * use `(nostr)` attribute to disable auto-generated ToString method
- * use `(nocast)` attribute to disable auto-generated explicit cast operators
+- `(csharp.customToString)` attribute to disable auto-generated ToString method
+- `(csharp.customCast)` attribute to disable auto-generated explicit cast operators
 - thrift structs can be generated as c# structs (rather than classes) by using the attribute  `csharp.struct`
  * LIMITATION: default values for structs is not supported (completely fixable, just have to work around a quirk of c#)
  * NB. an optional field referencing a c# struct will still have reference semantics, via wrapping the struct in a single-item "Ref" class)
@@ -58,7 +58,8 @@ C#:
 - no __isset generated for optional value types (why: less memory cost; in the rare case you need the functionality, can recreate manually by including explicit companion "isset" variable)
 - tab indents instead of spaces (to match our coding conventions)
 - various restrictions for cases we are not using, so are untested...
-- if a field has a "type" annotation, the generated field type will be "$Name_<$T>", where $Name is the original name, and $T is either the attribute value (if provided) or the field name
+- `(typearg="name")` annotation, the generated field type will be  of type`type<name>`
+- `ix="FooIx"` annotation (for any value FooIx) on a list generates and uses custom class FooIxList, a wrapper around list that uses FooIx as its keys
 	
 Java:
 

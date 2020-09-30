@@ -29,6 +29,7 @@
 #include <iostream>
 #include <vector>
 #include <cctype>
+#include <set>
 
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -239,14 +240,16 @@ public:
      return is_cs_struct(unwrap_alias(f->get_type()));
   }
 
-  // if a field has a "type" annotation, the generated field type will be "Typedef<$T>$Name", where $Name is the original name, and $T is either the attribute value (if provided) or the field name
-  bool field_type_annotation(t_field* f, string *tt) {
-  	auto a = f->annotations_.find("type");
+  // if a field has a "typearg" annotation, the generated field type will be "Typedef<$T>$Name", where $Name is the original name, and $T is either the attribute value (if provided) or the field name
+  bool field_typearg_annotation(t_field* f, string *tt) {
+  	auto a = f->annotations_.find("typearg");
   	if(a == f->annotations_.end()) return false;
-  	if(a->second == "1") throw "'type' missing value (for field: " + f->get_name() + " )";
+  	if(a->second == "1") throw "'typearg' missing value (for field: " + f->get_name() + " )";
   	*tt = a->second;
   	return true;
   }
+
+  
 
   t_type* unwrap_alias(t_type *t) {
     while(t->is_alias()) t = ((t_typedef*)t)->get_type();
@@ -308,6 +311,47 @@ public:
       out << indent() << prefix << ".Read(iprot);" << endl;
     }
   }
+
+  void generate_ix_list_class(string ix) {
+    if(generated_ix_list_.count(ix)) return;
+    generated_ix_list_.insert(ix);
+    string type = ix + "List";
+    string fname = namespace_dir_ + "/" + type + ".cs";
+    ofstream_with_content_based_conditional_update f;
+    f.open(fname.c_str());
+    // it would be nice to make this a generic class templatized on the key type, but i'm not sure how to do that w/ a struct key type w/ no overhead (i could confirm to an interface, but would c# be smart enought to compile that away?). rather than mess around w/ that, doing this, which i can be pretty sure will be efficient. (EK)
+    f << 
+      "namespace " << namespace_name_ << " {\n"
+      "	using System.Collections.Generic;\n"
+      "\n"
+      "	public struct " << type << "<T> : System.Collections.IEnumerable {\n"
+      "		public List<T> List;\n"
+      "\n"
+      "		public T this[" << ix << " i] {\n"
+      "			get => List[i.Value];\n"
+      "			set => List[i.Value] = value;\n"
+      "		}\n"
+      "\n"
+      "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();\n"
+      "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n"
+      "		public int Count => List?.Count ?? 0;\n"
+      "		public string ToString() => List?.ToString() ?? \"<null>\";\n"
+      "\n"
+      "		public void Add(T t) {\n"
+      "			if(List == null) List = new List<T>();\n"
+      "			List.Add(t);\n"
+      "		}\n"
+      "\n"
+      "		public static bool operator==(" << type << "<T> l, object obj) {\n"
+      "			if(obj == null) return l.List == null;\n"
+      "			throw new System.Exception(\"invalid comparison\");\n"
+      "		}\n"
+      "\n"
+      "		public static bool operator!=(" << type << "<T> l, object obj) => !(l == obj);\n"
+      "	}\n"
+      "}\n";
+    f.close();
+  }
   
 private:
   string namespace_name_;
@@ -322,8 +366,9 @@ private:
   bool leg_;
   string wcf_namespace_;
 
-  std::map<string, int> csharp_keywords;
-  std::vector<member_mapping_scope>  member_mapping_scopes;
+  std::map<string, int> csharp_keywords_;
+  std::vector<member_mapping_scope>  member_mapping_scopes_;
+  std::set<string> generated_ix_list_;
 
   void init_keywords();
   string normalize_name(string name);
@@ -357,8 +402,8 @@ void t_csharp_generator::init_generator() {
   namespace_dir_ = subdir;
   init_keywords();
 
-  while( ! member_mapping_scopes.empty()) {
-    cleanup_member_name_mapping( member_mapping_scopes.back().scope_member);
+  while( ! member_mapping_scopes_.empty()) {
+    cleanup_member_name_mapping( member_mapping_scopes_.back().scope_member);
   }
 
   pverbose("C# options:\n");
@@ -376,7 +421,7 @@ string t_csharp_generator::normalize_name(string name) {
   std::transform(tmp.begin(), tmp.end(), tmp.begin(), static_cast<int (*)(int)>(std::tolower));
 
   // un-conflict keywords by prefixing with "@"
-  if (csharp_keywords.find(tmp) != csharp_keywords.end()) {
+  if (csharp_keywords_.find(tmp) != csharp_keywords_.end()) {
     return "@" + name;
   }
 
@@ -385,111 +430,111 @@ string t_csharp_generator::normalize_name(string name) {
 }
 
 void t_csharp_generator::init_keywords() {
-  csharp_keywords.clear();
+  csharp_keywords_.clear();
 
   // C# keywords
-  csharp_keywords["abstract"] = 1;
-  csharp_keywords["as"] = 1;
-  csharp_keywords["base"] = 1;
-  csharp_keywords["bool"] = 1;
-  csharp_keywords["break"] = 1;
-  csharp_keywords["byte"] = 1;
-  csharp_keywords["case"] = 1;
-  csharp_keywords["catch"] = 1;
-  csharp_keywords["char"] = 1;
-  csharp_keywords["checked"] = 1;
-  csharp_keywords["class"] = 1;
-  csharp_keywords["const"] = 1;
-  csharp_keywords["continue"] = 1;
-  csharp_keywords["decimal"] = 1;
-  csharp_keywords["default"] = 1;
-  csharp_keywords["delegate"] = 1;
-  csharp_keywords["do"] = 1;
-  csharp_keywords["double"] = 1;
-  csharp_keywords["else"] = 1;
-  csharp_keywords["enum"] = 1;
-  csharp_keywords["event"] = 1;
-  csharp_keywords["explicit"] = 1;
-  csharp_keywords["extern"] = 1;
-  csharp_keywords["false"] = 1;
-  csharp_keywords["finally"] = 1;
-  csharp_keywords["fixed"] = 1;
-  csharp_keywords["float"] = 1;
-  csharp_keywords["for"] = 1;
-  csharp_keywords["foreach"] = 1;
-  csharp_keywords["goto"] = 1;
-  csharp_keywords["if"] = 1;
-  csharp_keywords["implicit"] = 1;
-  csharp_keywords["in"] = 1;
-  csharp_keywords["int"] = 1;
-  csharp_keywords["interface"] = 1;
-  csharp_keywords["internal"] = 1;
-  csharp_keywords["is"] = 1;
-  csharp_keywords["lock"] = 1;
-  csharp_keywords["long"] = 1;
-  csharp_keywords["namespace"] = 1;
-  csharp_keywords["new"] = 1;
-  csharp_keywords["null"] = 1;
-  csharp_keywords["object"] = 1;
-  csharp_keywords["operator"] = 1;
-  csharp_keywords["out"] = 1;
-  csharp_keywords["override"] = 1;
-  csharp_keywords["params"] = 1;
-  csharp_keywords["private"] = 1;
-  csharp_keywords["protected"] = 1;
-  csharp_keywords["public"] = 1;
-  csharp_keywords["readonly"] = 1;
-  csharp_keywords["ref"] = 1;
-  csharp_keywords["return"] = 1;
-  csharp_keywords["sbyte"] = 1;
-  csharp_keywords["sealed"] = 1;
-  csharp_keywords["short"] = 1;
-  csharp_keywords["sizeof"] = 1;
-  csharp_keywords["stackalloc"] = 1;
-  csharp_keywords["static"] = 1;
-  csharp_keywords["string"] = 1;
-  csharp_keywords["struct"] = 1;
-  csharp_keywords["switch"] = 1;
-  csharp_keywords["this"] = 1;
-  csharp_keywords["throw"] = 1;
-  csharp_keywords["true"] = 1;
-  csharp_keywords["try"] = 1;
-  csharp_keywords["typeof"] = 1;
-  csharp_keywords["uint"] = 1;
-  csharp_keywords["ulong"] = 1;
-  csharp_keywords["unchecked"] = 1;
-  csharp_keywords["unsafe"] = 1;
-  csharp_keywords["ushort"] = 1;
-  csharp_keywords["using"] = 1;
-  csharp_keywords["virtual"] = 1;
-  csharp_keywords["void"] = 1;
-  csharp_keywords["volatile"] = 1;
-  csharp_keywords["while"] = 1;
+  csharp_keywords_["abstract"] = 1;
+  csharp_keywords_["as"] = 1;
+  csharp_keywords_["base"] = 1;
+  csharp_keywords_["bool"] = 1;
+  csharp_keywords_["break"] = 1;
+  csharp_keywords_["byte"] = 1;
+  csharp_keywords_["case"] = 1;
+  csharp_keywords_["catch"] = 1;
+  csharp_keywords_["char"] = 1;
+  csharp_keywords_["checked"] = 1;
+  csharp_keywords_["class"] = 1;
+  csharp_keywords_["const"] = 1;
+  csharp_keywords_["continue"] = 1;
+  csharp_keywords_["decimal"] = 1;
+  csharp_keywords_["default"] = 1;
+  csharp_keywords_["delegate"] = 1;
+  csharp_keywords_["do"] = 1;
+  csharp_keywords_["double"] = 1;
+  csharp_keywords_["else"] = 1;
+  csharp_keywords_["enum"] = 1;
+  csharp_keywords_["event"] = 1;
+  csharp_keywords_["explicit"] = 1;
+  csharp_keywords_["extern"] = 1;
+  csharp_keywords_["false"] = 1;
+  csharp_keywords_["finally"] = 1;
+  csharp_keywords_["fixed"] = 1;
+  csharp_keywords_["float"] = 1;
+  csharp_keywords_["for"] = 1;
+  csharp_keywords_["foreach"] = 1;
+  csharp_keywords_["goto"] = 1;
+  csharp_keywords_["if"] = 1;
+  csharp_keywords_["implicit"] = 1;
+  csharp_keywords_["in"] = 1;
+  csharp_keywords_["int"] = 1;
+  csharp_keywords_["interface"] = 1;
+  csharp_keywords_["internal"] = 1;
+  csharp_keywords_["is"] = 1;
+  csharp_keywords_["lock"] = 1;
+  csharp_keywords_["long"] = 1;
+  csharp_keywords_["namespace"] = 1;
+  csharp_keywords_["new"] = 1;
+  csharp_keywords_["null"] = 1;
+  csharp_keywords_["object"] = 1;
+  csharp_keywords_["operator"] = 1;
+  csharp_keywords_["out"] = 1;
+  csharp_keywords_["override"] = 1;
+  csharp_keywords_["params"] = 1;
+  csharp_keywords_["private"] = 1;
+  csharp_keywords_["protected"] = 1;
+  csharp_keywords_["public"] = 1;
+  csharp_keywords_["readonly"] = 1;
+  csharp_keywords_["ref"] = 1;
+  csharp_keywords_["return"] = 1;
+  csharp_keywords_["sbyte"] = 1;
+  csharp_keywords_["sealed"] = 1;
+  csharp_keywords_["short"] = 1;
+  csharp_keywords_["sizeof"] = 1;
+  csharp_keywords_["stackalloc"] = 1;
+  csharp_keywords_["static"] = 1;
+  csharp_keywords_["string"] = 1;
+  csharp_keywords_["struct"] = 1;
+  csharp_keywords_["switch"] = 1;
+  csharp_keywords_["this"] = 1;
+  csharp_keywords_["throw"] = 1;
+  csharp_keywords_["true"] = 1;
+  csharp_keywords_["try"] = 1;
+  csharp_keywords_["typeof"] = 1;
+  csharp_keywords_["uint"] = 1;
+  csharp_keywords_["ulong"] = 1;
+  csharp_keywords_["unchecked"] = 1;
+  csharp_keywords_["unsafe"] = 1;
+  csharp_keywords_["ushort"] = 1;
+  csharp_keywords_["using"] = 1;
+  csharp_keywords_["virtual"] = 1;
+  csharp_keywords_["void"] = 1;
+  csharp_keywords_["volatile"] = 1;
+  csharp_keywords_["while"] = 1;
 
   // C# contextual keywords
-  csharp_keywords["add"] = 1;
-  csharp_keywords["alias"] = 1;
-  csharp_keywords["ascending"] = 1;
-  csharp_keywords["async"] = 1;
-  csharp_keywords["await"] = 1;
-  csharp_keywords["descending"] = 1;
-  csharp_keywords["dynamic"] = 1;
-  csharp_keywords["from"] = 1;
-  csharp_keywords["get"] = 1;
-  csharp_keywords["global"] = 1;
-  csharp_keywords["group"] = 1;
-  csharp_keywords["into"] = 1;
-  csharp_keywords["join"] = 1;
-  csharp_keywords["let"] = 1;
-  csharp_keywords["orderby"] = 1;
-  csharp_keywords["partial"] = 1;
-  csharp_keywords["remove"] = 1;
-  csharp_keywords["select"] = 1;
-  csharp_keywords["set"] = 1;
-  csharp_keywords["value"] = 1;
-  csharp_keywords["var"] = 1;
-  csharp_keywords["where"] = 1;
-  csharp_keywords["yield"] = 1;
+  csharp_keywords_["add"] = 1;
+  csharp_keywords_["alias"] = 1;
+  csharp_keywords_["ascending"] = 1;
+  csharp_keywords_["async"] = 1;
+  csharp_keywords_["await"] = 1;
+  csharp_keywords_["descending"] = 1;
+  csharp_keywords_["dynamic"] = 1;
+  csharp_keywords_["from"] = 1;
+  csharp_keywords_["get"] = 1;
+  csharp_keywords_["global"] = 1;
+  csharp_keywords_["group"] = 1;
+  csharp_keywords_["into"] = 1;
+  csharp_keywords_["join"] = 1;
+  csharp_keywords_["let"] = 1;
+  csharp_keywords_["orderby"] = 1;
+  csharp_keywords_["partial"] = 1;
+  csharp_keywords_["remove"] = 1;
+  csharp_keywords_["select"] = 1;
+  csharp_keywords_["set"] = 1;
+  csharp_keywords_["value"] = 1;
+  csharp_keywords_["var"] = 1;
+  csharp_keywords_["where"] = 1;
+  csharp_keywords_["yield"] = 1;
 }
 
 void t_csharp_generator::start_csharp_namespace(ostream& out) {
@@ -887,7 +932,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       string ft = field_type_name(*m_iter);
       string tt;
-      if(field_type_annotation(*m_iter, &tt)) {
+      if(field_typearg_annotation(*m_iter, &tt)) {
         // std::cerr << "type annotation: " << tt << endl;
         ft += "<" + tt + ">";
       }
@@ -2984,21 +3029,21 @@ string t_csharp_generator::make_valid_csharp_identifier(string const& fromName) 
 }
 
 void t_csharp_generator::cleanup_member_name_mapping(void* scope) {
-  if ( member_mapping_scopes.empty()) {
+  if ( member_mapping_scopes_.empty()) {
     throw "internal error: cleanup_member_name_mapping() no scope active";
   }
 
-  member_mapping_scope& active = member_mapping_scopes.back();
+  member_mapping_scope& active = member_mapping_scopes_.back();
   if (active.scope_member != scope) {
     throw "internal error: cleanup_member_name_mapping() called for wrong struct";
   }
 
-  member_mapping_scopes.pop_back();
+  member_mapping_scopes_.pop_back();
 }
 
 string t_csharp_generator::get_mapped_member_name(string name) {
-  if ( ! member_mapping_scopes.empty()) {
-    member_mapping_scope& active = member_mapping_scopes.back();
+  if ( ! member_mapping_scopes_.empty()) {
+    member_mapping_scope& active = member_mapping_scopes_.back();
     map<string, string>::iterator iter = active.mapping_table.find(name);
     if (active.mapping_table.end() != iter) {
       return iter->second;
@@ -3019,8 +3064,8 @@ void t_csharp_generator::prepare_member_name_mapping(void* scope,
   // begin new scope
   member_mapping_scope dummy;
   dummy.scope_member = 0;
-  member_mapping_scopes.push_back(dummy);
-  member_mapping_scope& active = member_mapping_scopes.back();
+  member_mapping_scopes_.push_back(dummy);
+  member_mapping_scope& active = member_mapping_scopes_.back();
   active.scope_member = scope;
 
   // current C# generator policy:
@@ -3088,7 +3133,7 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
   bool is_required = field_is_required(f);
   string nm = type_name(f->get_type(), false, false, true, is_required);
   string tt;
-  if (field_type_annotation(f, &tt)) {
+  if (field_typearg_annotation(f, &tt)) {
     // this is soooo ugly
     if(nm.find("<") != string::npos) {
       int i = nm.find_last_of('<');
@@ -3099,6 +3144,12 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
     } else {
       nm = nm + "<" + tt + ">";
     }
+  }
+  if(f->get_type()->is_list() && f->annotations_.count("ix")) {    
+    string ix = f->annotations_["ix"];
+    if(nm.find("List<") != 0) throw "programmer error -- 'ix' is only supported for lists error for field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
+    generate_ix_list_class(ix);
+    nm = ix + nm;
   }
   if (ref && field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
