@@ -105,6 +105,18 @@ public:
     }
   }
 
+  bool is_numeric() const {
+    switch (base_) {
+    case TYPE_I8:
+    case TYPE_I32:
+    case TYPE_I64:
+    case TYPE_DOUBLE:
+      return true;
+    default:
+      return false;
+    }
+  }
+
 private:
   t_base base_;
 

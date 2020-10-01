@@ -591,6 +591,10 @@ void t_csharp_generator::generate_typedef(t_typedef* ttypedef) {
   f.close();
 }
 
+static bool is_numeric_base_type(t_type* t) {
+  return t->is_base_type() && ((t_base_type*)t)->is_numeric();
+}
+
 void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_typedef* ttypedef) {
   start_csharp_namespace(out);
 
@@ -599,31 +603,76 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
 
   string nm = normalize_name(ttypedef->get_name());
   string vnm = type_name(t);
-  
-  indent(out) << "[Serializable]" << endl;
-  indent(out) << "public partial struct " << nm << " : TTypedef<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
-  scope_up(out);
-  indent(out) << "public " << vnm << " Value;\n";
-  indent(out) << endl;
-  indent(out) << "public " << nm << "(" << vnm << " value) { Value = value; }" << endl;
-  indent(out) << "public bool Equals(" << nm << " other) => Value != null ? this.Value.Equals(other.Value) : other.Value == null;\n";
-  indent(out) << "public int CompareTo(" << nm << " other) => Value != null ? Value.CompareTo(other.Value) : other.Value != null ? -1 : 0;\n";
-  indent(out) << "public override int GetHashCode() => Value != null ? Value.GetHashCode() : 0;\n";
-  indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value == null : a.Value.CompareTo(b.Value) == 0;\n";
-  indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value != null : a.Value.CompareTo(b.Value) != 0;\n";
-  indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
-  if(!ttypedef->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value != null ? Value.ToString() : \"<null>\"; }\n";
-  indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
-  indent(out) << "public void SetValue(" << vnm << " value) { Value = value; }\n";
-  if(!ttypedef->annotations_.count("csharp.customCast")) {
-	  // explicit cast operators, for convenience
-	  indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
-	  indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
-  }
- 
-  scope_down(out);
-  out << endl;
 
+  if(is_numeric_base_type(t)) {
+    out << "\t" << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << "> {\n";
+    out << "\t\t" << "public " << vnm << " Value;\n";
+    out << "\n";
+    out << "\t\t" << "public " << nm << "(" << vnm << " value) => Value = value;\n";
+    out << "\n";
+    out << "\t\t" << "public " << vnm << " GetValue() => Value;\n";
+    out << "\t\t" << "public void SetValue(" << vnm << " value) => Value = value;\n";
+    out << "\n";
+    out << "\t\t" << "public bool Equals(" << nm << " other) => Value == other.Value;\n";
+    out << "\t\t" << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
+    out << "\t\t" << "public override int GetHashCode() => Value.GetHashCode();\n";
+    out << "\t\t" << "public override bool Equals(object that) => that is " << nm << " && Equals((" << nm << ")that);\n";
+    if(!ttypedef->annotations_.count("csharp.customToString")) {
+      out << "\n";
+      out << "\t\t" << "public override string ToString() => Value.ToString();\n";
+    }
+    if(!ttypedef->annotations_.count("csharp.customOperators")) {
+      out << "\n";
+      out << "\t\t" << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
+      out << "\t\t" << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
+      out << "\n";
+      out << "\t\t" << "public static " << nm << " operator++(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
+      out << "\t\t" << "public static " << nm << " operator--(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
+      out << "\n";
+      out << "\t\t" << "public static " << nm << " operator +(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value + y.Value); }";
+      out << "\t\t" << "public static " << nm << " operator -(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value - y.Value); }";
+      out << "\t\t" << "public static " << nm << " operator *(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value * y.Value); }";
+      out << "\t\t" << "public static " << nm << " operator /(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value / y.Value); }";
+      out << "\t\t" << "public static " << nm << " operator %(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value % y.Value); }";
+      out << "\t\t" << "public static " << nm << " operator -(" << nm << " x) { return new " << nm << "(-x.Value); }";
+      out << "\n";
+      out << "\t\t" << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == b.Value;\n";
+      out << "\t\t" << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
+      out << "\t\t" << "public static bool operator<(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
+      out << "\t\t" << "public static bool operator<=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
+      out << "\t\t" << "public static bool operator>(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
+      out << "\t\t" << "public static bool operator>=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
+    }
+    if(ttypedef->annotations_.count("ix")) {
+      out << "\n";
+      out << "\t\t" << "public static " << nm << " None => (" << nm << ")((" << vnm << ")(-1));\n";
+      out << "\t\t" << "public bool IsValid => Value >= 0;\n";
+      out << "\t\t" << "public bool IsNone => Value == (" << vnm << ")(-1);\n";
+    }
+    out << "	}\n";
+  } else {
+    indent(out) << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
+    scope_up(out);
+    indent(out) << "public " << vnm << " Value;\n";
+    indent(out) << endl;
+    indent(out) << "public " << nm << "(" << vnm << " value) => Value = value;" << endl;
+    indent(out) << "public bool Equals(" << nm << " other) => Value != null ? this.Value.Equals(other.Value) : other.Value == null;\n";
+    indent(out) << "public int CompareTo(" << nm << " other) => Value != null ? Value.CompareTo(other.Value) : other.Value != null ? -1 : 0;\n";
+    indent(out) << "public override int GetHashCode() => Value != null ? Value.GetHashCode() : 0;\n";
+    indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value == null : a.Value.CompareTo(b.Value) == 0;\n";
+    indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value != null : a.Value.CompareTo(b.Value) != 0;\n";
+    indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
+    if(!ttypedef->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value != null ? Value.ToString() : \"<null>\"; }\n";
+    indent(out) << "public " << vnm << " GetValue() => Value;\n";
+    indent(out) << "public void SetValue(" << vnm << " value) => Value = value;\n";
+    if(!ttypedef->annotations_.count("csharp.customOperators")) {
+      // explicit cast operators, for convenience
+      indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
+      indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
+    }
+    scope_down(out);
+    out << endl;
+  }
   end_csharp_namespace(out);
 }
 
@@ -897,7 +946,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
 
   string kind = is_cs_struct(tstruct) ? "struct" : "class";
-  bool vwrap = is_value_wrapper(tstruct) && !is_exception; // treat value wrapper classes liek we treat typedefs
+  bool vwrap = is_value_wrapper(tstruct) && !is_exception; // treat value wrapper classes like we treat typedefs
   string vnm, nm;
   
   indent(out) << "public " << (is_final ? "sealed " : "") << "partial " << kind << " " << normalize_name(tstruct->get_name()) << " : ";
@@ -910,7 +959,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   if(vwrap) {
     nm = normalize_name(tstruct->get_name());
     vnm = field_type_name(tstruct->get_field_by_name("Value"));
-	  out << ", TTypedef<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">";
+	  out << ", IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">";
   }
 
   out << endl;
@@ -961,7 +1010,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   out << '\n';
 
   if(vwrap) {
-    indent(out) << "public " << nm << "(" << vnm << " value) { Value = value; }" << endl;
+    indent(out) << "public " << nm << "(" << vnm << " value) => Value = value; }" << endl;
     indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
     indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
     indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
@@ -969,9 +1018,9 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
     indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
     if(!tstruct->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
-    indent(out) << "public " << vnm << " GetValue() { return Value; }\n";
-    indent(out) << "public void SetValue(" << vnm << " value) { Value = value; }\n";
-    if(!tstruct->annotations_.count("csharp.customCast")) {
+    indent(out) << "public " << vnm << " GetValue() => Value;\n";
+    indent(out) << "public void SetValue(" << vnm << " value) => Value = value;\n";
+    if(!tstruct->annotations_.count("csharp.customOperators")) {
         // explicit cast operators, for convenience
         indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
         indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";

@@ -48,7 +48,7 @@ C#:
 	 * `typedef (alias) string FooId // will use string in generated source`
 	 * alias typedefs generate a corresponding "using" in C#
 - `(csharp.customToString)` attribute to disable auto-generated ToString method
-- `(csharp.customCast)` attribute to disable auto-generated explicit cast operators
+- `(csharp.customOperators)` attribute to disable auto-generated operators
 - thrift structs can be generated as c# structs (rather than classes) by using the attribute  `csharp.struct`
  * LIMITATION: default values for structs is not supported (completely fixable, just have to work around a quirk of c#)
  * NB. an optional field referencing a c# struct will still have reference semantics, via wrapping the struct in a single-item "Ref" class)
@@ -59,7 +59,8 @@ C#:
 - tab indents instead of spaces (to match our coding conventions)
 - various restrictions for cases we are not using, so are untested...
 - `(typearg="name")` annotation, the generated field type will be  of type`type<name>`
-- `ix="FooIx"` annotation (for any value FooIx) on a list generates and uses custom class FooIxList, a wrapper around list that uses FooIx as its keys
+- `(ix="FooIx")` annotation (for any value FooIx) on a list generates and uses custom class FooIxList, a wrapper around list that uses FooIx as its keys
+- `(ix)` annotation on typedef of integral type adds IsValid, IsNone, None definitions
 	
 Java:
 
