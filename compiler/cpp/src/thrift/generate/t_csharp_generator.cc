@@ -633,10 +633,10 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
       out << "\n";
       out << "\t\t" << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == b.Value;\n";
       out << "\t\t" << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
-      out << "\t\t" << "public static bool operator<(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
-      out << "\t\t" << "public static bool operator<=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
-      out << "\t\t" << "public static bool operator>(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
-      out << "\t\t" << "public static bool operator>=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
+      out << "\t\t" << "public static bool operator<(" << nm << " a, " << nm << " b) => a.Value < b.Value;\n";
+      out << "\t\t" << "public static bool operator<=(" << nm << " a, " << nm << " b) => a.Value <= b.Value;\n";
+      out << "\t\t" << "public static bool operator>(" << nm << " a, " << nm << " b) => a.Value > b.Value;\n";
+      out << "\t\t" << "public static bool operator>=(" << nm << " a, " << nm << " b) => a.Value >= b.Value;\n";
     }
     if(ttypedef->annotations_.count("ix")) {
       out << "\n";
@@ -2789,7 +2789,6 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
     obj = tmp("_list");
   }
 
-  indent(out) << prefix << " = new " << field_type_name(f, false) << "();" << endl;
   if (ttype->is_map()) {
     out << indent() << "TMap " << obj << " = iprot.ReadMapBegin();" << endl;
   } else if (ttype->is_set()) {
@@ -2797,6 +2796,13 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
   } else if (ttype->is_list()) {
     out << indent() << "TList " << obj << " = iprot.ReadListBegin();" << endl;
   }
+
+  if (ttype->is_list()) {
+    indent(out) << prefix << " = new " << field_type_name(f, false) << "(" << obj << ".Count);" << endl;
+  } else {
+    indent(out) << prefix << " = new " << field_type_name(f, false) << "();" << endl;
+  }
+  
 
   string i = tmp("_i");
   indent(out) << "for( int " << i << " = 0; " << i << " < " << obj << ".Count"
