@@ -315,41 +315,36 @@ public:
   void generate_ix_list_class(string ix) {
     if(generated_ix_list_.count(ix)) return;
     generated_ix_list_.insert(ix);
-    string type = ix + "List";
-    string fname = namespace_dir_ + "/" + type + ".cs";
+    string nm = ix + "List";
+    string fname = namespace_dir_ + "/" + nm + ".cs";
     ofstream_with_content_based_conditional_update f;
     f.open(fname.c_str());
     // it would be nice to make this a generic class templatized on the key type, but i'm not sure how to do that w/ a struct key type w/ no overhead (i could confirm to an interface, but would c# be smart enought to compile that away?). rather than mess around w/ that, doing this, which i can be pretty sure will be efficient. (EK)
-    f << 
-      "namespace " << namespace_name_ << " {\n"
-      "	using System.Collections.Generic;\n"
-      "\n"
-      "	public struct " << type << "<T> : System.Collections.IEnumerable {\n"
-      "		public List<T> List;\n"
-      "\n"
-      "		public T this[" << ix << " i] {\n"
-      "			get => List[i.Value];\n"
-      "			set => List[i.Value] = value;\n"
-      "		}\n"
-      "\n"
-      "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();\n"
-      "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n"
-      "		public int Count => List?.Count ?? 0;\n"
-      "		public string ToString() => List?.ToString() ?? \"<null>\";\n"
-      "\n"
-      "		public void Add(T t) {\n"
-      "			if(List == null) List = new List<T>();\n"
-      "			List.Add(t);\n"
-      "		}\n"
-      "\n"
-      "		public static bool operator==(" << type << "<T> l, object obj) {\n"
-      "			if(obj == null) return l.List == null;\n"
-      "			throw new System.Exception(\"invalid comparison\");\n"
-      "		}\n"
-      "\n"
-      "		public static bool operator!=(" << type << "<T> l, object obj) => !(l == obj);\n"
-      "	}\n"
-      "}\n";
+    f << "namespace " << namespace_name_ << " {\n";
+    f << "	using System.Collections.Generic;\n";
+    f << "\n";
+    f << "	public struct " << nm << "<T> : System.Collections.IEnumerable {\n";
+    f << "		public List<T> List;\n";
+    f << "\n";
+    f << "		public T this[" << ix << " i] {\n";
+    f << "			get => List[i.Value];\n";
+    f << "			set => List[i.Value] = value;\n";
+    f << "		}\n";
+    f << "\n";
+    f << "		public " << nm << "(int capacity) => List = new List<T>(capacity); \n";
+    f << "\n";
+    f << "		public int Count => List.Count;\n";
+    f << "		public " << ix << " End => new " << ix << "(List.Count);\n";
+    f << "		public void Add(T t) => List.Add(t);\n";
+    f << "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();		\n";
+    f << "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n";
+    f << "\n";
+    f << "		public string ToString() => List != null ? List.ToString() : \"<null>\";\n";
+    f << "\n";
+    f << "		public static bool operator==(" << nm << "<T> l, object obj) => obj == null ? l.List == null : throw new System.Exception(\"invalid comparison\");\n";
+    f << "		public static bool operator!=(" << nm << "<T> l, object obj) => obj == null ? l.List != null : throw new System.Exception(\"invalid comparison\");\n";
+    f << "	}\n";
+    f << "}\n";
     f.close();
   }
   
@@ -623,18 +618,18 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
     }
     if(!ttypedef->annotations_.count("csharp.customOperators")) {
       out << "\n";
-      out << "\t\t" << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
-      out << "\t\t" << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
+      out << "\t\t" << "public static explicit operator " << vnm << "(" << nm << " x) => x.Value;\n";
+      out << "\t\t" << "public static explicit operator " << nm << "(" << vnm << " x) => new " << nm << "(x);\n";
       out << "\n";
       out << "\t\t" << "public static " << nm << " operator++(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
       out << "\t\t" << "public static " << nm << " operator--(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
       out << "\n";
-      out << "\t\t" << "public static " << nm << " operator +(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value + y.Value); }";
-      out << "\t\t" << "public static " << nm << " operator -(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value - y.Value); }";
-      out << "\t\t" << "public static " << nm << " operator *(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value * y.Value); }";
-      out << "\t\t" << "public static " << nm << " operator /(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value / y.Value); }";
-      out << "\t\t" << "public static " << nm << " operator %(" << nm << " x, " << nm << " y) { return new " << nm << "(x.Value % y.Value); }";
-      out << "\t\t" << "public static " << nm << " operator -(" << nm << " x) { return new " << nm << "(-x.Value); }";
+      out << "\t\t" << "public static " << nm << " operator+(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value + y.Value);\n";
+      out << "\t\t" << "public static " << nm << " operator-(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value - y.Value);\n";
+      out << "\t\t" << "public static " << nm << " operator*(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value * y.Value);\n";
+      out << "\t\t" << "public static " << nm << " operator/(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value / y.Value);\n";
+      out << "\t\t" << "public static " << nm << " operator%(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value % y.Value);\n";
+      out << "\t\t" << "public static " << nm << " operator-(" << nm << " x) => new " << nm << "(-x.Value);\n";
       out << "\n";
       out << "\t\t" << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == b.Value;\n";
       out << "\t\t" << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
