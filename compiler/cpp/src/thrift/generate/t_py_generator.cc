@@ -995,7 +995,7 @@ void t_py_generator::generate_py_struct_definition(ostream& out,
     indent(out) << "def __repr__(self):" << endl;
     indent_up();
     out << indent() << "L = ['%s=%r' % (key, value)" << endl
-        << indent() << "     for key, value in self.__dict__.items()]" << endl
+        << indent() << "     for key, value in self.__dict__.items() if value is not None]" << endl
         << indent() << "return '%s(%s)' % (self.__class__.__name__, ', '.join(L))" << endl
         << endl;
     indent_down();
