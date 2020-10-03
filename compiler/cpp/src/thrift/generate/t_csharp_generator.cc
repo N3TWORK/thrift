@@ -147,7 +147,7 @@ public:
     // god the thrift generation code is such a mess, we must resort to extreme measures
     stringstream ss;
     generate_csharp_struct_set_defaults_body(ss, tstruct);
-    if(ss.str().size() > 0) {
+    if (ss.str().size() > 0) {
       throw "type '" + tstruct->get_name() + "' annotated with 'csharp.struct' has default values\nDefault values are not supported w/ the 'csharp.struct' annotation (sorry)\n(Ask erin to fix it)";
     }
   }
@@ -229,6 +229,11 @@ public:
     return true;
   }
 
+  // like is_sum_type, but a tagged union
+  bool is_tagged_union(t_type* t) {
+    return t->annotations_.count("csharp.taggedUnion");
+  }
+
   bool is_primitive_or_container(t_type* t) {
     return t->is_base_type() || t->is_map() || t->is_set() || t->is_list() || t->is_enum();
   }
@@ -243,8 +248,8 @@ public:
   // if a field has a "typearg" annotation, the generated field type will be "Typedef<$T>$Name", where $Name is the original name, and $T is either the attribute value (if provided) or the field name
   bool field_typearg_annotation(t_field* f, string *tt) {
   	auto a = f->annotations_.find("typearg");
-  	if(a == f->annotations_.end()) return false;
-  	if(a->second == "1") throw "'typearg' missing value (for field: " + f->get_name() + " )";
+  	if (a == f->annotations_.end()) return false;
+  	if (a->second == "1") throw "'typearg' missing value (for field: " + f->get_name() + " )";
   	*tt = a->second;
   	return true;
   }
@@ -313,7 +318,7 @@ public:
   }
 
   void generate_ix_list_class(string ix) {
-    if(generated_ix_list_.count(ix)) return;
+    if (generated_ix_list_.count(ix)) return;
     generated_ix_list_.insert(ix);
     string nm = ix + "List";
     string fname = namespace_dir_ + "/" + nm + ".cs";
@@ -539,7 +544,7 @@ void t_csharp_generator::start_csharp_namespace(ostream& out) {
     auto typedefs = program_->get_typedefs();
     for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
       auto t = *i;
-      if(t->annotations_.count("alias")) {
+      if (t->annotations_.count("alias")) {
         auto u = t->get_type();
         while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
         indent(out) << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
@@ -572,7 +577,7 @@ void t_csharp_generator::close_generator() {
 }
 
 void t_csharp_generator::generate_typedef(t_typedef* ttypedef) {
-  if(ttypedef->is_alias()) return;
+  if (ttypedef->is_alias()) return;
   
   string name = namespace_dir_ + "/" + (ttypedef->get_name()) + ".cs";
   ofstream_with_content_based_conditional_update f;
@@ -599,7 +604,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   string nm = normalize_name(ttypedef->get_name());
   string vnm = type_name(t);
 
-  if(is_numeric_base_type(t)) {
+  if (is_numeric_base_type(t)) {
     out << "\t" << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << "> {\n";
     out << "\t\t" << "public " << vnm << " Value;\n";
     out << "\n";
@@ -612,11 +617,11 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
     out << "\t\t" << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
     out << "\t\t" << "public override int GetHashCode() => Value.GetHashCode();\n";
     out << "\t\t" << "public override bool Equals(object that) => that is " << nm << " && Equals((" << nm << ")that);\n";
-    if(!ttypedef->annotations_.count("csharp.customToString")) {
+    if (!ttypedef->annotations_.count("csharp.customToString")) {
       out << "\n";
       out << "\t\t" << "public override string ToString() => Value.ToString();\n";
     }
-    if(!ttypedef->annotations_.count("csharp.customOperators")) {
+    if (!ttypedef->annotations_.count("csharp.customOperators")) {
       out << "\n";
       out << "\t\t" << "public static explicit operator " << vnm << "(" << nm << " x) => x.Value;\n";
       out << "\t\t" << "public static explicit operator " << nm << "(" << vnm << " x) => new " << nm << "(x);\n";
@@ -638,7 +643,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
       out << "\t\t" << "public static bool operator>(" << nm << " a, " << nm << " b) => a.Value > b.Value;\n";
       out << "\t\t" << "public static bool operator>=(" << nm << " a, " << nm << " b) => a.Value >= b.Value;\n";
     }
-    if(ttypedef->annotations_.count("ix")) {
+    if (ttypedef->annotations_.count("ix")) {
       out << "\n";
       out << "\t\t" << "public static " << nm << " None => (" << nm << ")((" << vnm << ")(-1));\n";
       out << "\t\t" << "public bool IsValid => Value >= 0;\n";
@@ -657,10 +662,10 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
     indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value == null : a.Value.CompareTo(b.Value) == 0;\n";
     indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value == null ? b.Value != null : a.Value.CompareTo(b.Value) != 0;\n";
     indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
-    if(!ttypedef->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value != null ? Value.ToString() : \"<null>\"; }\n";
+    if (!ttypedef->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value != null ? Value.ToString() : \"<null>\"; }\n";
     indent(out) << "public " << vnm << " GetValue() => Value;\n";
     indent(out) << "public void SetValue(" << vnm << " value) => Value = value;\n";
-    if(!ttypedef->annotations_.count("csharp.customOperators")) {
+    if (!ttypedef->annotations_.count("csharp.customOperators")) {
       // explicit cast operators, for convenience
       indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
       indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
@@ -926,11 +931,14 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   if (!in_class) {
     start_csharp_namespace(out);
   }
+  bool tu = is_tagged_union(tstruct);
+  if (tu) indent(out) << "using System.Runtime.InteropServices;\n";
 
   out << endl;
 
   generate_csharp_doc(out, tstruct);
   prepare_member_name_mapping(tstruct);
+
 
   indent(out) << "[Serializable]" << endl;
   if ((serialize_ || wcf_) && !is_exception) {
@@ -938,7 +946,9 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
                 << endl; // do not make exception classes directly WCF serializable, we provide a
                          // separate "fault" for that
   }
+  if (tu) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
+  
 
   string kind = is_cs_struct(tstruct) ? "struct" : "class";
   bool vwrap = is_value_wrapper(tstruct) && !is_exception; // treat value wrapper classes like we treat typedefs
@@ -951,7 +961,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   out << "TBase";
 
-  if(vwrap) {
+  if (vwrap) {
     nm = normalize_name(tstruct->get_name());
     vnm = field_type_name(tstruct->get_field_by_name("Value"));
 	  out << ", IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">";
@@ -976,16 +986,25 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       string ft = field_type_name(*m_iter);
       string tt;
-      if(field_typearg_annotation(*m_iter, &tt)) {
+      if (field_typearg_annotation(*m_iter, &tt)) {
         // std::cerr << "type annotation: " << tt << endl;
         ft += "<" + tt + ">";
       }
-      if(seen.count(ft)) {
+      if (seen.count(ft)) {
         throw "type '" + tstruct->get_name() + "' annotated with 'csharp.oneOf' contains fields w/ the same type ('" + (*m_iter)->get_name() + "' and at least one other field)\n" + 
           "This is not supported (ask Erin to fix it)\n";
       }
       seen.insert(ft);
     }
+  } else if (is_tagged_union(tstruct)) {
+    indent(out) << "public enum Fields {\n";
+    indent(out) << "\t" << "Empty = 0,\n";
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      indent(out) << "\t" << (*m_iter)->get_name() << " = " << (*m_iter)->get_key() << ",\n";
+    }
+    indent(out) << "}\n";
+    out << "\n";
+    indent(out) << "[FieldOffset(0)] public Fields Tag;\n";
   }
 	
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
@@ -1004,7 +1023,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   out << '\n';
 
-  if(vwrap) {
+  if (vwrap) {
     indent(out) << "public " << nm << "(" << vnm << " value) => Value = value; }" << endl;
     indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
     indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
@@ -1012,10 +1031,10 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     indent(out) << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) == 0;\n";
     indent(out) << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value.CompareTo(b.Value) != 0;\n";
     indent(out) << "public override bool Equals(object that) { return !ReferenceEquals(null, that) && that is " << nm << " && Equals((" << nm << ")that); }\n";
-    if(!tstruct->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
+    if (!tstruct->annotations_.count("csharp.customToString")) indent(out) << "public override string ToString() { return Value.ToString(); }\n";
     indent(out) << "public " << vnm << " GetValue() => Value;\n";
     indent(out) << "public void SetValue(" << vnm << " value) => Value = value;\n";
-    if(!tstruct->annotations_.count("csharp.customOperators")) {
+    if (!tstruct->annotations_.count("csharp.customOperators")) {
         // explicit cast operators, for convenience
         indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
         indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
@@ -1081,7 +1100,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     generate_csharp_struct_equals(out, tstruct);
     generate_csharp_struct_hashcode(out, tstruct);
   }
-  if(!vwrap && !tstruct->annotations_.count("csharp.customToString")) generate_csharp_struct_tostring(out, tstruct);
+  if (!vwrap && !tstruct->annotations_.count("csharp.customToString")) generate_csharp_struct_tostring(out, tstruct);
   scope_down(out);
   out << endl;
 
@@ -1180,6 +1199,8 @@ void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* t
   indent_down();
   indent(out) << "}" << endl;
 
+  if (is_tagged_union(tstruct)) indent(out) << "Tag = (Fields)field.ID;\n";
+
   indent(out) << "switch (field.ID)" << endl;
 
   scope_up(out);
@@ -1275,7 +1296,9 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       }
       else
       {
-        if (null_allowed) {
+        if (is_tagged_union(tstruct)) {
+          out << indent() << "if (Tag == Fields." << prop_name(*f_iter) << ") {\n";
+        } else if (null_allowed) {
           out << indent() << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
         } else if (field_is_ref_wrapped(*f_iter)) {
           out << indent() << "if (" << prop_name(*f_iter) << " != null) {" << endl;
@@ -1409,7 +1432,10 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
     bool is_required = field_is_required((*f_iter));
     bool has_default = field_has_default((*f_iter));
-    if (nullable_ && !has_default && !is_required) {
+    if (is_tagged_union(tstruct)) {
+      out << indent() << "if (Tag == Fields." << prop_name(*f_iter) << ") {\n";
+      indent_up();
+    } else if (nullable_ && !has_default && !is_required) {
       indent(out) << "if (" << prop_name((*f_iter)) << " != null) {" << endl;
       indent_up();
     } else if (!is_required) {
@@ -1429,7 +1455,7 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
         indent(out) << "__first = false;" << endl;
       }
       indent(out) << "__sb.Append(\"" << prop_name((*f_iter)) << ": \");" << endl;
-    } else if(!had_required) {
+    } else if (!had_required) {
       indent(out) << "__sb.Append(\"" << prop_name((*f_iter)) << ": \");" << endl;
     } else {
       indent(out) << "__sb.Append(\", " << prop_name((*f_iter)) << ": \");" << endl;
@@ -3047,7 +3073,9 @@ void t_csharp_generator::generate_csharp_property(ostream& out, t_struct *tstruc
   if (is_sum_type(tstruct, NULL)) {
     indent(out) << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << " { get { return Value as " << ft << "; } set { Value = value; } }" << endl;
   } else {
-    indent(out) << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << ";" << endl;
+    if (is_tagged_union(tstruct)) indent(out) << "[FieldOffset(8)] ";
+    else indent(out);
+    out << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << ";" << endl;
   }
 }
 
@@ -3185,7 +3213,7 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
   string tt;
   if (field_typearg_annotation(f, &tt)) {
     // this is soooo ugly
-    if(nm.find("<") != string::npos) {
+    if (nm.find("<") != string::npos) {
       int i = nm.find_last_of('<');
       int j = nm.find_first_of('>');
       string elt = nm.substr(i + 1, j - i - 1);
@@ -3195,9 +3223,9 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
       nm = nm + "<" + tt + ">";
     }
   }
-  if(f->get_type()->is_list() && f->annotations_.count("ix")) {    
+  if (f->get_type()->is_list() && f->annotations_.count("ix")) {    
     string ix = f->annotations_["ix"];
-    if(nm.find("List<") != 0) throw "programmer error -- 'ix' is only supported for lists error for field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
+    if (nm.find("List<") != 0) throw "programmer error -- 'ix' is only supported for lists error for field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
     generate_ix_list_class(ix);
     nm = ix + nm;
   }
