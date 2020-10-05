@@ -1024,7 +1024,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   out << '\n';
 
   if (vwrap) {
-    indent(out) << "public " << nm << "(" << vnm << " value) => Value = value; }" << endl;
+    indent(out) << "public " << nm << "(" << vnm << " value) => Value = value;" << endl;
     indent(out) << "public bool Equals(" << nm << " other) => this.Value.Equals(other.Value);\n";
     indent(out) << "public int CompareTo(" << nm << " other) => Value.CompareTo(other.Value);\n";
     indent(out) << "public override int GetHashCode() => Value.GetHashCode();\n";
