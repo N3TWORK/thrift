@@ -325,6 +325,8 @@ public:
     ofstream_with_content_based_conditional_update f;
     f.open(fname.c_str());
     // it would be nice to make this a generic class templatized on the key type, but i'm not sure how to do that w/ a struct key type w/ no overhead (i could confirm to an interface, but would c# be smart enought to compile that away?). rather than mess around w/ that, doing this, which i can be pretty sure will be efficient. (EK)
+    f << "#pragma warning disable CS0660\n";
+    f << "#pragma warning disable CS0661\n";
     f << "namespace " << namespace_name_ << " {\n";
     f << "	using System.Collections.Generic;\n";
     f << "\n";
@@ -344,7 +346,7 @@ public:
     f << "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();		\n";
     f << "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n";
     f << "\n";
-    f << "		public string ToString() => List != null ? List.ToString() : \"<null>\";\n";
+    f << "		public override string ToString() => List != null ? List.ToString() : \"<null>\";\n";
     f << "\n";
     f << "		public static bool operator==(" << nm << "<T> l, object obj) => obj == null ? l.List == null : throw new System.Exception(\"invalid comparison\");\n";
     f << "		public static bool operator!=(" << nm << "<T> l, object obj) => obj == null ? l.List != null : throw new System.Exception(\"invalid comparison\");\n";
