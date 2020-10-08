@@ -237,6 +237,18 @@ public:
   bool is_primitive_or_container(t_type* t) {
     return t->is_base_type() || t->is_map() || t->is_set() || t->is_list() || t->is_enum();
   }
+
+  bool field_is_ix_list(t_field* f) {
+    return f->get_type()->is_list() && f->annotations_.count("ix");
+  }
+
+  bool field_can_be_null(t_field* f) {
+    return !field_is_ref_wrapped(f) && !field_is_ix_list(f) && type_can_be_null(f->get_type());
+    // bool field_can_be_null(t_field *f) {
+    //   if (!field_is_required(f)) return true;
+    //   return type_can_be_null(f->get_type());
+    // }
+  }
   
   // does field wrap a value type in a Ref<> class?
   bool field_is_ref_wrapped(t_field* f) { 
@@ -295,16 +307,13 @@ public:
   string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
+  
   bool field_is_required(t_field* tfield) { return tfield->get_req() == t_field::T_REQUIRED; }
+  
   bool type_can_be_null(t_type* ttype) {
     ttype = unwrap_typedef(ttype);
     if (ttype->is_struct()) return !is_cs_struct(ttype);
     return ttype->is_container() || ttype->is_xception() || ttype->is_string();
-  }
-
-  bool field_can_be_null(t_field *f) {
-    if (!field_is_required(f)) return true;
-    return type_can_be_null(f->get_type());
   }
 
   void generate_deserialize_struct(ostream& out, t_field* f, t_struct* tstruct, string prefix) {
@@ -347,9 +356,6 @@ public:
     f << "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n";
     f << "\n";
     f << "		public override string ToString() => List != null ? List.ToString() : \"<null>\";\n";
-    f << "\n";
-    f << "		public static bool operator==(" << nm << "<T> l, object obj) => obj == null ? l.List == null : throw new System.Exception(\"invalid comparison\");\n";
-    f << "		public static bool operator!=(" << nm << "<T> l, object obj) => obj == null ? l.List != null : throw new System.Exception(\"invalid comparison\");\n";
     f << "\n";
     f << "		public KeyIter Keys => new KeyIter{I = (" << ix << ")(-1), List = List}; // fast\n";
     f << "		public IEnumerable<" << ix << "> LinqKeys => LinqKeysIter(); // slower\n";
@@ -1184,7 +1190,7 @@ void t_csharp_generator::generate_csharp_wcffault(ostream& out, t_struct* tstruc
 }
 
 void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* tstruct) {
-  indent(out) << "public void Read (TProtocol iprot)" << endl;
+  indent(out) << "public void Read(TProtocol iprot)" << endl;
   scope_up(out);
 
   out << indent() << "iprot.IncrementRecursionDepth();" << endl;
@@ -1295,7 +1301,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
     for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
       bool is_required = field_is_required((*f_iter));
       bool has_default = field_has_default((*f_iter));
-      bool null_allowed = type_can_be_null((*f_iter)->get_type());
+      bool null_allowed = field_can_be_null(*f_iter);
 
       if (is_required)
       {
@@ -3238,7 +3244,7 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
       nm = nm + "<" + tt + ">";
     }
   }
-  if (f->get_type()->is_list() && f->annotations_.count("ix")) {    
+  if (field_is_ix_list(f)) {
     string ix = f->annotations_["ix"];
     if (nm.find("List<") != 0) throw "programmer error -- 'ix' is only supported for lists error for field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
     generate_ix_list_class(ix);
