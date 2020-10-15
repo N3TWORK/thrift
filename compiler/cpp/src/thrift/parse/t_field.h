@@ -111,7 +111,7 @@ public:
 
   void set_reference(bool reference) { reference_ = reference; }
 
-  t_struct *parent_struct_; // HACK FOR JAVA: containing struct
+  t_struct *parent_struct_;
 
 private:
   t_type* type_;

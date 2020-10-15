@@ -254,6 +254,7 @@ public:
   bool field_is_ref_wrapped(t_field* f) { 
      if (f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
      if (field_is_required(f) || field_has_default(f)) return false;
+     if (is_tagged_union(f->parent_struct_)) return false;
      return is_cs_struct(unwrap_alias(f->get_type()));
   }
 

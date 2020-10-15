@@ -25,5 +25,6 @@ bool t_struct::append(t_field* elem) {
   members_.push_back(elem);
   members_in_id_order_.insert(bounds.second, elem);
   validate_union_member(elem);
+  elem->parent_struct_ = this;
   return true;
 }

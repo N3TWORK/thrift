@@ -487,7 +487,6 @@ void t_java_generator::init_generator() {
       auto f = *fi;
       auto t = const_cast<t_type*>(get_true_type(f->get_type()));
       if(sum) t->xname_ = prefix + "." + package_name_ + "." + t->get_name();
-      f->parent_struct_ = s;
     }
   }
 }
