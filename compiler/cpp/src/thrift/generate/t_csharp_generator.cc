@@ -261,7 +261,11 @@ public:
   // if a field has a "typearg" annotation, the generated field type will be "Typedef<$T>$Name", where $Name is the original name, and $T is either the attribute value (if provided) or the field name
   bool field_typearg_annotation(t_field* f, string *tt) {
   	auto a = f->annotations_.find("typearg");
-  	if (a == f->annotations_.end()) return false;
+  	if (a == f->annotations_.end()) {
+  	  // backcompat: also accept "type" (TODO: update code and remove)
+  	  a = f->annotations_.find("type");
+  	  if(a == f->annotations_.end()) return false;
+  	}
   	if (a->second == "1") throw "'typearg' missing value (for field: " + f->get_name() + " )";
   	*tt = a->second;
   	return true;
