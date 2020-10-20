@@ -207,6 +207,18 @@ public:
 
   void start_csharp_namespace(std::ostream& out);
   void end_csharp_namespace(std::ostream& out);
+    
+  void write_typedef_usings(string indent, std::ostream& out) {
+    auto typedefs = program_->get_typedefs();
+    for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
+      auto t = *i;
+      if (t->annotations_.count("alias")) {
+        auto u = t->get_type();
+        while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
+        out << indent << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
+      }
+    }
+  }
 
   string csharp_type_usings();
   string csharp_thrift_usings();
@@ -331,10 +343,9 @@ public:
     }
   }
 
-  void generate_ix_list_class(string ix) {
+  void generate_ix_list_class(string ix, string nm) {
     if (generated_ix_list_.count(ix)) return;
     generated_ix_list_.insert(ix);
-    string nm = ix + "List";
     string fname = namespace_dir_ + "/" + nm + ".cs";
     ofstream_with_content_based_conditional_update f;
     f.open(fname.c_str());
@@ -343,19 +354,20 @@ public:
     f << "#pragma warning disable CS0661\n";
     f << "namespace " << namespace_name_ << " {\n";
     f << "	using System.Collections.Generic;\n";
+    write_typedef_usings("\t", f);
     f << "\n";
     f << "	public struct " << nm << "<T> : System.Collections.IEnumerable {\n";
     f << "		public List<T> List;\n";
     f << "\n";
     f << "		public T this[" << ix << " i] {\n";
-    f << "			get => List[i.Value];\n";
-    f << "			set => List[i.Value] = value;\n";
+    f << "			get => List[(int)i];\n";
+    f << "			set => List[(int)i] = value;\n";
     f << "		}\n";
     f << "\n";
     f << "		public " << nm << "(int capacity) => List = new List<T>(capacity); \n";
     f << "\n";
     f << "		public int Count => List.Count;\n";
-    f << "		public " << ix << " End => new " << ix << "(List.Count);\n";
+    f << "		public " << ix << " End => (" << ix << ")List.Count;\n";
     f << "		public void Add(T t) => List.Add(t);\n";
     f << "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();		\n";
     f << "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n";
@@ -371,7 +383,10 @@ public:
     f << "			public List<T> List;\n";
     f << "\n";
     f << "			public " << ix << " Current => I;\n";
-    f << "			public bool MoveNext() => (++I.Value) < List.Count;\n";
+    f << "			public bool MoveNext() {\n";
+    f << "				I = (" << ix << ")((int)I + 1)\n;";
+    f << "				return (int)I < List.Count;\n";
+    f << "			}\n";
     f << "			public KeyIter GetEnumerator() => this;\n";
     f << "		}\n";
     f << "	}\n";
@@ -567,15 +582,7 @@ void t_csharp_generator::start_csharp_namespace(ostream& out) {
   if (!namespace_name_.empty()) {
     out << "namespace " << namespace_name_ << "\n";
     scope_up(out);
-    auto typedefs = program_->get_typedefs();
-    for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
-      auto t = *i;
-      if (t->annotations_.count("alias")) {
-        auto u = t->get_type();
-        while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
-        indent(out) << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
-      }
-    }
+    write_typedef_usings(indent(), out);
   }
 }
 
@@ -1488,9 +1495,9 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
     }
 
     t_type* ttype = (*f_iter)->get_type();
-    if (type_can_be_null((*f_iter)->get_type())) {
+    if (field_can_be_null(*f_iter)) {
       indent(out) << "__sb.Append(" << prop_name((*f_iter))
-                  << "== null ? \"<null>\" : " << prop_name((*f_iter)) << ".ToString());" << endl;
+                  << " == null ? \"<null>\" : " << prop_name((*f_iter)) << ".ToString());" << endl;
     } else {
       indent(out) << "__sb.Append(" << prop_name((*f_iter)) << ");" << endl;
     }
@@ -3251,9 +3258,11 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
   }
   if (field_is_ix_list(f)) {
     string ix = f->annotations_["ix"];
-    if (nm.find("List<") != 0) throw "programmer error -- 'ix' is only supported for lists error for field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
-    generate_ix_list_class(ix);
-    nm = ix + nm;
+    if (nm.find("List<") != 0) throw "error -- 'ix' is only supported for list<prim>; field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
+    string elt = nm.substr(5, nm.size() - 5 - 1);
+    string ixlist = "LMap" + ix;
+    generate_ix_list_class(ix, ixlist);
+    return ixlist + "<" + elt + ">";
   }
   if (ref && field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
