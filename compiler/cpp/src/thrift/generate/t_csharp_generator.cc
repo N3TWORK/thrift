@@ -283,8 +283,6 @@ public:
   	return true;
   }
 
-  
-
   t_type* unwrap_alias(t_type *t) {
     while(t->is_alias()) t = ((t_typedef*)t)->get_type();
     return t;
@@ -294,14 +292,26 @@ public:
     // for some reason I don't understand, sometimes we get a type that's not a typedef but says it is. try to detect that by telling if the names of the base type and the typedef are the same. (EK)
     return t->is_typedef() && t->get_name() != unwrap_typedef(t)->get_name();
   }
+  
   // do we generate a wrapper struct for the given typedef?
   bool is_wrapped_typedef(t_type* t) {
     return really_is_typedef_(unwrap_alias(t));
   } 
+  
   t_type* unwrap_typedef(t_type* t) {
     while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
     return t;
   }
+
+  void generate_type_attrs(std::ostream& out, t_type* t) {
+    if(t->annotations_.count("csharp.explicitLayout")) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
+  }
+
+  void generate_field_attrs(std::ostream& out, t_field* f) {
+    if(f->annotations_.count("csharp.fieldOffset")) indent(out) << "[FieldOffset(" << f->annotations_["csharp.fieldOffset"] << ")]\n";
+  }
+
+  
   string field_type_name(t_field* f, bool ref=true);
   string type_name(t_type* ttype,
                         bool in_countainer = false,
@@ -593,13 +603,20 @@ void t_csharp_generator::end_csharp_namespace(ostream& out) {
 }
 
 string t_csharp_generator::csharp_type_usings() {
-  return string() + "using System;\n" + "using System.Collections;\n"
-         + "using System.Collections.Generic;\n" + "using System.Text;\n" + "using System.IO;\n"
-         + ((async_) ? "using System.Threading.Tasks;\n" : "") + "using Thrift;\n"
-         + "using Thrift.Collections;\n" + ((serialize_ || wcf_) ? "#if !SILVERLIGHT\n" : "")
-         + ((serialize_ || wcf_) ? "using System.Xml.Serialization;\n" : "")
-         + ((serialize_ || wcf_) ? "#endif\n" : "") + (wcf_ ? "//using System.ServiceModel;\n" : "")
-         + "using System.Runtime.Serialization;\n";
+  return string() + 
+    "using System;\n" + 
+    "using System.Collections;\n" + 
+    "using System.Collections.Generic;\n" + 
+    "using System.Text;\n" + 
+    "using System.IO;\n" + 
+    ((async_) ? "using System.Threading.Tasks;\n" : "") + 
+    "using Thrift;\n" + 
+    "using Thrift.Collections;\n" + 
+    ((serialize_ || wcf_) ? "#if !SILVERLIGHT\n" : "") + 
+    ((serialize_ || wcf_) ? "using System.Xml.Serialization;\n" : "")
+    + ((serialize_ || wcf_) ? "#endif\n" : "") + (wcf_ ? "//using System.ServiceModel;\n" : "") + 
+    "using System.Runtime.Serialization;\n" + 
+    "using System.Runtime.InteropServices;\n";
 }
 
 string t_csharp_generator::csharp_thrift_usings() {
@@ -964,22 +981,19 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   if (!in_class) {
     start_csharp_namespace(out);
   }
-  bool tu = is_tagged_union(tstruct);
-  if (tu) indent(out) << "using System.Runtime.InteropServices;\n";
-
   out << endl;
 
   generate_csharp_doc(out, tstruct);
   prepare_member_name_mapping(tstruct);
 
-
+  generate_type_attrs(out, tstruct);
   indent(out) << "[Serializable]" << endl;
   if ((serialize_ || wcf_) && !is_exception) {
     indent(out) << "[DataContract(Namespace=\"" << wcf_namespace_ << "\")]"
                 << endl; // do not make exception classes directly WCF serializable, we provide a
                          // separate "fault" for that
   }
-  if (tu) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
+  if (is_tagged_union(tstruct)) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
   
 
@@ -1097,7 +1111,9 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
         out << field_type_name(*m_iter) << " " << normalize_name((*m_iter)->get_name());
       }
     }
-    out << ") {" << endl;
+    out << ")" ;
+    if(tstruct->annotations_.count("csharp.explicitLayout")) out << " : this()"; // avoid errors w/ unset overlapping fields (annoying c# requirement)
+    out << " {" << endl;
     indent_up();
     if (!is_cs_struct(tstruct)) indent(out) << "SetThriftDefaults();" << endl;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
@@ -3094,6 +3110,7 @@ void t_csharp_generator::generate_property(ostream& out, t_struct *tstruct, t_fi
 }
 
 void t_csharp_generator::generate_csharp_property(ostream& out, t_struct *tstruct, t_field* tfield, bool isPublic, bool generateIsset, string fieldPrefix) {
+  generate_field_attrs(out, tfield);
   if (leg_ && isPublic) {
     indent(out) << "[DataMember(Index = " << tfield->get_key() << ")]" << endl;
   }
