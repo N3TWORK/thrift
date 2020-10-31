@@ -679,12 +679,12 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
       out << "\t\t" << "public static " << nm << " operator++(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
       out << "\t\t" << "public static " << nm << " operator--(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
       out << "\n";
-      out << "\t\t" << "public static " << nm << " operator+(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value + y.Value);\n";
-      out << "\t\t" << "public static " << nm << " operator-(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value - y.Value);\n";
-      out << "\t\t" << "public static " << nm << " operator*(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value * y.Value);\n";
-      out << "\t\t" << "public static " << nm << " operator/(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value / y.Value);\n";
-      out << "\t\t" << "public static " << nm << " operator%(" << nm << " x, " << nm << " y) => new " << nm << "(x.Value % y.Value);\n";
-      out << "\t\t" << "public static " << nm << " operator-(" << nm << " x) => new " << nm << "(-x.Value);\n";
+      out << "\t\t" << "public static " << nm << " operator+(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value + y.Value));\n";
+      out << "\t\t" << "public static " << nm << " operator-(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value - y.Value));\n";
+      out << "\t\t" << "public static " << nm << " operator*(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value * y.Value));\n";
+      out << "\t\t" << "public static " << nm << " operator/(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value / y.Value));\n";
+      out << "\t\t" << "public static " << nm << " operator%(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value % y.Value));\n";
+      out << "\t\t" << "public static " << nm << " operator-(" << nm << " x) => new " << nm << "((" << vnm << ")(-x.Value));\n";
       out << "\n";
       out << "\t\t" << "public static bool operator==(" << nm << " a, " << nm << " b) => a.Value == b.Value;\n";
       out << "\t\t" << "public static bool operator!=(" << nm << " a, " << nm << " b) => a.Value != b.Value;\n";
