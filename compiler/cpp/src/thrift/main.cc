@@ -628,12 +628,14 @@ void dump_docstrings(t_program* program) {
  * Emits a warning on list<byte>, binary type is typically a much better choice.
  */
 void check_for_list_of_bytes(t_type* list_elem_type) {
-  if ((g_parse_mode == PROGRAM) && (list_elem_type != NULL) && list_elem_type->is_base_type()) {
-    t_base_type* tbase = (t_base_type*)list_elem_type;
-    if (tbase->get_base() == t_base_type::TYPE_I8) {
-      pwarning(1, "Consider using the more efficient \"binary\" type instead of \"list<byte>\".");
-    }
-  }
+  // EK: disabled, because i really do want a list of i8
+  
+  // if ((g_parse_mode == PROGRAM) && (list_elem_type != NULL) && list_elem_type->is_base_type()) {
+  //   t_base_type* tbase = (t_base_type*)list_elem_type;
+  //   if (tbase->get_base() == t_base_type::TYPE_I8) {
+  //     pwarning(1, "Consider using the more efficient \"binary\" type instead of \"list<byte>\".");
+  //   }
+  // }
 }
 
 static bool g_byte_warning_emitted = false;
