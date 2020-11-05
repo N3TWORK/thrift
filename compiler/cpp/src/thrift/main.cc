@@ -240,7 +240,7 @@ bool check_is_directory(const char* dir_name) {
  */
 void yyerror(const char* fmt, ...) {
   va_list args;
-  fprintf(stderr, "[ERROR:%s:%d] (last token was '%s')\n", g_curpath.c_str(), yylineno, yytext);
+  fprintf(stderr, "%s(%d): error (last token was '%s'): ", g_curpath.c_str(), yylineno, yytext);
 
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
