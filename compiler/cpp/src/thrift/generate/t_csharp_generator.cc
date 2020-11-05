@@ -353,7 +353,7 @@ public:
     }
   }
 
-  void generate_ix_list_class(string ix, string nm) {
+  void generate_lmap_class(string ix, string nm) {
     if (generated_ix_list_.count(ix)) return;
     generated_ix_list_.insert(ix);
     string fname = namespace_dir_ + "/" + nm + ".cs";
@@ -3277,9 +3277,9 @@ string t_csharp_generator::field_type_name(t_field* f, bool ref) {
     string ix = f->annotations_["ix"];
     if (nm.find("List<") != 0) throw "error -- 'ix' is only supported for list<prim>; field " + f->get_name() + " type " + f->get_type()->get_name() + " annotation: " + ix + " typename: " + nm;
     string elt = nm.substr(5, nm.size() - 5 - 1);
-    string ixlist = "LMap" + ix;
-    generate_ix_list_class(ix, ixlist);
-    return ixlist + "<" + elt + ">";
+    string lmap = "LMap" + ix;
+    generate_lmap_class(ix, lmap);
+    return lmap + "<" + elt + ">";
   }
   if (ref && field_is_ref_wrapped(f)) nm = "Ref<" + nm + ">";
   return nm;
