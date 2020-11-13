@@ -45,6 +45,9 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+// for "csharp.taggedUnion" structs, use layout annotations to make the struct be an actual union? saves memory & gains performance BUT it is crashing mono -- I think probably because we are doing including a reference type in the union, which (again, probably) is unsupported and confuses the GC (which probably is trying to read the reference field and track it down). probably target tagged union is the problem.
+#define REAL_UNION 0
+
 static const string endl = "\n"; // avoid ostream << std::endl flushes (EK: omg)
 
 struct member_mapping_scope {
@@ -267,6 +270,7 @@ public:
      if (f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
      if (field_is_required(f) || field_has_default(f)) return false;
      if (is_tagged_union(f->parent_struct_)) return false;
+     if(f->annotations_.count("csharp.noref")) return false;
      return is_cs_struct(unwrap_alias(f->get_type()));
   }
 
@@ -993,7 +997,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
                 << endl; // do not make exception classes directly WCF serializable, we provide a
                          // separate "fault" for that
   }
-  if (is_tagged_union(tstruct)) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
+  if (REAL_UNION && is_tagged_union(tstruct)) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
   
 
@@ -1051,7 +1055,8 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     }
     indent(out) << "}\n";
     out << "\n";
-    indent(out) << "[FieldOffset(0)] public Fields Tag;\n";
+    if(REAL_UNION) indent(out) << "[FieldOffset(0)] public Fields Tag;\n";
+    else           indent(out) <<                  "public Fields Tag;\n";
   }
 	
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
@@ -3123,7 +3128,7 @@ void t_csharp_generator::generate_csharp_property(ostream& out, t_struct *tstruc
   if (is_sum_type(tstruct, NULL)) {
     indent(out) << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << " { get { return Value as " << ft << "; } set { Value = value; } }" << endl;
   } else {
-    if (is_tagged_union(tstruct)) indent(out) << "[FieldOffset(8)] ";
+    if (is_tagged_union(tstruct) && REAL_UNION) indent(out) << "[FieldOffset(8)] ";
     else indent(out);
     out << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << ";" << endl;
   }
