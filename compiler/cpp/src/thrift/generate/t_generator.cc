@@ -28,16 +28,19 @@ using namespace std;
  * @param program The thrift program to compile into C++ source
  */
 void t_generator::generate_program() {
-  // If non-string fields contain string default values, remove the default value and save as an annotation (which can be processed further by other tools, i.e., cfgdsl)
+  // Save string/identifeiir default values as annotations
+  //
+  // Clear the default value if it's a string & the field is not (this lets e.g. cfgdsl process defaults)
   for(auto s = program_->get_structs().begin(); s != program_->get_structs().end(); ++s) {
     for(auto f_ = (*s)->get_members().begin(); f_ != (*s)->get_members().end(); ++f_) {
       t_field *f = *f_;
-      if(f->get_type()->is_string()) continue;
       auto v = f->get_value();
-      if(!v || v->get_type() != t_const_value::CV_STRING) continue;
-      // string default for non-string type: clear default, but save as annotation
-      f->annotations_["defaultValue"] = v->get_string();
-      f->set_value(NULL);
+      if(!v) continue;
+      
+      if(v->get_type() == t_const_value::CV_STRING) f->annotations_["defaultValue"] = v->get_string();
+      else if(v->get_type() == t_const_value::CV_IDENTIFIER) f->annotations_["defaultValue"] = v->get_identifier_name();
+      
+      if(!f->get_type()->is_string() && v->get_type() == t_const_value::CV_STRING) f->set_value(NULL);
     }
   }
   
