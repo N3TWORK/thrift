@@ -2600,7 +2600,14 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
               << "; "
               << "++" << i << ")" << endl;
   scope_up(out);
-
+    
+    t_program *program = program_;
+    
+    //Force collection to use fully qualified namespace
+    if (leg_)
+        program_ = NULL;
+    
+    
   if (ttype->is_map()) {
     generate_deserialize_map_element(out, (t_map*)ttype, prefix);
   } else if (ttype->is_set()) {
@@ -2609,6 +2616,7 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
     generate_deserialize_list_element(out, (t_list*)ttype, prefix);
   }
 
+    program_ = program;
   scope_down(out);
 
   if (ttype->is_map()) {
