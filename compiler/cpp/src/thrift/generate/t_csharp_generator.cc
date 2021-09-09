@@ -712,6 +712,10 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
 
   indent(out) << "public " << (is_final ? "sealed " : "") << "partial class "
               << normalize_name(tstruct->get_name()) << " : ";
+    
+  if (leg_) {
+      out << "ThriftFactory<" << normalize_name(tstruct->get_name()) << ">, ";
+  }
 
   if (is_exception) {
     out << "TException, ";
@@ -2549,11 +2553,19 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
 void t_csharp_generator::generate_deserialize_struct(ostream& out,
                                                      t_struct* tstruct,
                                                      string prefix) {
-  if (union_ && tstruct->is_union()) {
-    out << indent() << prefix << " = " << type_name(tstruct) << ".Read(iprot);" << endl;
+  if (leg_) {
+      if (union_ && tstruct->is_union()) {
+        out << indent() << prefix << " = " << type_name(tstruct) << ".Read(iprot);" << endl;
+      } else {
+        out << indent() << prefix << " = " << type_name(tstruct) << ".CreateInstance(iprot);" << endl;
+      }
   } else {
-    out << indent() << prefix << " = new " << type_name(tstruct) << "();" << endl << indent()
-        << prefix << ".Read(iprot);" << endl;
+      if (union_ && tstruct->is_union()) {
+        out << indent() << prefix << " = " << type_name(tstruct) << ".Read(iprot);" << endl;
+      } else {
+        out << indent() << prefix << " = new " << type_name(tstruct) << "();" << endl << indent()
+            << prefix << ".Read(iprot);" << endl;
+      }
   }
 }
 

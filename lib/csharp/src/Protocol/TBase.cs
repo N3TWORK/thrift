@@ -17,6 +17,8 @@
  * under the License.
  */
 
+using System;
+
 namespace Thrift.Protocol
 {
     public interface TBase : TAbstractBase
@@ -26,4 +28,28 @@ namespace Thrift.Protocol
         /// </summary>
         void Read(TProtocol tProtocol);
     }
+
+
+    //Required by csharp:leg compilation
+    public abstract class ThriftFactory<T> where T : TBase, new()
+    {
+        public static T CreateInstance(TProtocol tProtocol)
+        {
+            T inst = new T();
+            inst.Read(tProtocol);
+            return inst;
+        }
+    }
+
+
+    //Provided by csharp:leg compilation
+    [AttributeUsage(AttributeTargets.All)]
+    public class DataMemberAttribute : System.Attribute
+    {
+        public int Index { get; set; }
+        public DataMemberAttribute()
+        {
+        }
+    }
+
 }
