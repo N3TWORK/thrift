@@ -713,13 +713,15 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   indent(out) << "public " << (is_final ? "sealed " : "") << "partial class "
               << normalize_name(tstruct->get_name()) << " : ";
     
-  if (leg_) {
-      out << "ThriftFactory<" << normalize_name(tstruct->get_name()) << ">, ";
-  }
+  
 
   if (is_exception) {
     out << "TException, ";
   }
+  else if (leg_) {
+    out << "ThriftFactory<" << normalize_name(tstruct->get_name()) << ">, ";
+  }
+    
   out << "TBase";
 
   out << endl;
