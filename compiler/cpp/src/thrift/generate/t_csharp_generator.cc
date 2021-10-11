@@ -100,7 +100,7 @@ public:
   }
 
   virtual string indent_str() const { return "\t"; }
-  
+
   void init_generator();
   void close_generator();
 
@@ -133,7 +133,7 @@ public:
 
   void generate_csharp_typedef_definition(std::ostream& out, t_typedef* ttypedef);
   void generate_csharp_typedef_body(std::ostream& out, t_type *t) {
-    
+
   }
 
   void generate_csharp_struct(t_struct* tstruct, bool is_exception);
@@ -210,7 +210,7 @@ public:
 
   void start_csharp_namespace(std::ostream& out);
   void end_csharp_namespace(std::ostream& out);
-    
+
   void write_typedef_usings(string indent, std::ostream& out) {
     auto typedefs = program_->get_typedefs();
     for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
@@ -226,7 +226,7 @@ public:
   string csharp_type_usings();
   string csharp_thrift_usings();
 
-  // is t a thrift struct that will be represented as a c# struct (i.e.,, value type, not ref type class)? 
+  // is t a thrift struct that will be represented as a c# struct (i.e.,, value type, not ref type class)?
   bool is_cs_struct(t_type* t) {
     return (t->is_struct() && t->annotations_.count("csharp.struct") > 0);
   }
@@ -264,9 +264,9 @@ public:
     //   return type_can_be_null(f->get_type());
     // }
   }
-  
+
   // does field wrap a value type in a Ref<> class?
-  bool field_is_ref_wrapped(t_field* f) { 
+  bool field_is_ref_wrapped(t_field* f) {
      if (f->get_key() == 0) return false; // fake "field" created for container temporaries are never refs
      if (field_is_required(f) || field_has_default(f)) return false;
      if (is_tagged_union(f->parent_struct_)) return false;
@@ -291,17 +291,17 @@ public:
     while(t->is_alias()) t = ((t_typedef*)t)->get_type();
     return t;
   }
-  
+
   bool really_is_typedef_(t_type* t) {
     // for some reason I don't understand, sometimes we get a type that's not a typedef but says it is. try to detect that by telling if the names of the base type and the typedef are the same. (EK)
     return t->is_typedef() && t->get_name() != unwrap_typedef(t)->get_name();
   }
-  
+
   // do we generate a wrapper struct for the given typedef?
   bool is_wrapped_typedef(t_type* t) {
     return really_is_typedef_(unwrap_alias(t));
-  } 
-  
+  }
+
   t_type* unwrap_typedef(t_type* t) {
     while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
     return t;
@@ -315,7 +315,7 @@ public:
     if(f->annotations_.count("csharp.fieldOffset")) indent(out) << "[FieldOffset(" << f->annotations_["csharp.fieldOffset"] << ")]\n";
   }
 
-  
+
   string field_type_name(t_field* f, bool ref=true);
   string type_name(t_type* ttype,
                         bool in_countainer = false,
@@ -338,9 +338,9 @@ public:
   string get_enum_class_name(t_type* type);
 
   bool field_has_default(t_field* tfield) { return tfield->get_value() != NULL; }
-  
+
   bool field_is_required(t_field* tfield) { return tfield->get_req() == t_field::T_REQUIRED; }
-  
+
   bool type_can_be_null(t_type* ttype) {
     ttype = unwrap_typedef(ttype);
     if (ttype->is_struct()) return !is_cs_struct(ttype);
@@ -407,7 +407,7 @@ public:
     f << "}\n";
     f.close();
   }
-  
+
 private:
   string namespace_name_;
   ofstream_with_content_based_conditional_update f_service_;
@@ -607,19 +607,19 @@ void t_csharp_generator::end_csharp_namespace(ostream& out) {
 }
 
 string t_csharp_generator::csharp_type_usings() {
-  return string() + 
-    "using System;\n" + 
-    "using System.Collections;\n" + 
-    "using System.Collections.Generic;\n" + 
-    "using System.Text;\n" + 
-    "using System.IO;\n" + 
-    ((async_) ? "using System.Threading.Tasks;\n" : "") + 
-    "using Thrift;\n" + 
-    "using Thrift.Collections;\n" + 
-    ((serialize_ || wcf_) ? "#if !SILVERLIGHT\n" : "") + 
+  return string() +
+    "using System;\n" +
+    "using System.Collections;\n" +
+    "using System.Collections.Generic;\n" +
+    "using System.Text;\n" +
+    "using System.IO;\n" +
+    ((async_) ? "using System.Threading.Tasks;\n" : "") +
+    "using Thrift;\n" +
+    "using Thrift.Collections;\n" +
+    ((serialize_ || wcf_) ? "#if !SILVERLIGHT\n" : "") +
     ((serialize_ || wcf_) ? "using System.Xml.Serialization;\n" : "")
-    + ((serialize_ || wcf_) ? "#endif\n" : "") + (wcf_ ? "//using System.ServiceModel;\n" : "") + 
-    "using System.Runtime.Serialization;\n" + 
+    + ((serialize_ || wcf_) ? "#endif\n" : "") + (wcf_ ? "//using System.ServiceModel;\n" : "") +
+    "using System.Runtime.Serialization;\n" +
     "using System.Runtime.InteropServices;\n";
 }
 
@@ -632,7 +632,7 @@ void t_csharp_generator::close_generator() {
 
 void t_csharp_generator::generate_typedef(t_typedef* ttypedef) {
   if (ttypedef->is_alias()) return;
-  
+
   string name = namespace_dir_ + "/" + (ttypedef->get_name()) + ".cs";
   ofstream_with_content_based_conditional_update f;
 
@@ -681,7 +681,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
       out << "\t\t" << "public static explicit operator " << nm << "(" << vnm << " x) => new " << nm << "(x);\n";
       out << "\n";
       out << "\t\t" << "public static " << nm << " operator++(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
-      out << "\t\t" << "public static " << nm << " operator--(" << nm << " ix) => (" << nm << ")(ix.Value + (" << vnm << ")1);\n";
+      out << "\t\t" << "public static " << nm << " operator--(" << nm << " ix) => (" << nm << ")(ix.Value - (" << vnm << ")1);\n";
       out << "\n";
       out << "\t\t" << "public static " << nm << " operator+(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value + y.Value));\n";
       out << "\t\t" << "public static " << nm << " operator-(" << nm << " x, " << nm << " y) => new " << nm << "((" << vnm << ")(x.Value - y.Value));\n";
@@ -999,12 +999,12 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
   if (REAL_UNION && is_tagged_union(tstruct)) indent(out) << "[StructLayout(LayoutKind.Explicit)]\n";
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
-  
+
 
   string kind = is_cs_struct(tstruct) ? "struct" : "class";
   bool vwrap = is_value_wrapper(tstruct) && !is_exception; // treat value wrapper classes like we treat typedefs
   string vnm, nm;
-  
+
   indent(out) << "public " << (is_final ? "sealed " : "") << "partial " << kind << " " << normalize_name(tstruct->get_name()) << " : ";
 
   if (is_exception) {
@@ -1042,7 +1042,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
         ft += "<" + tt + ">";
       }
       if (seen.count(ft)) {
-        throw "type '" + tstruct->get_name() + "' annotated with 'csharp.oneOf' contains fields w/ the same type ('" + (*m_iter)->get_name() + "' and at least one other field)\n" + 
+        throw "type '" + tstruct->get_name() + "' annotated with 'csharp.oneOf' contains fields w/ the same type ('" + (*m_iter)->get_name() + "' and at least one other field)\n" +
           "This is not supported (ask Erin to fix it)\n";
       }
       seen.insert(ft);
@@ -1058,7 +1058,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     if(REAL_UNION) indent(out) << "[FieldOffset(0)] public Fields Tag;\n";
     else           indent(out) <<                  "public Fields Tag;\n";
   }
-	
+
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     generate_csharp_doc(out, *m_iter);
     generate_property(out, tstruct, *m_iter, true, true);
@@ -1142,7 +1142,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
     assert_csharp_no_defaults(tstruct);
   }
   indent(out) << "}" << endl << endl;
-  
+
 
   generate_csharp_struct_reader(out, tstruct);
   if (is_result) {
@@ -1181,7 +1181,7 @@ void t_csharp_generator::generate_csharp_struct_set_defaults_body(ostream& out, 
       if (field_is_required((*m_iter))) {
         print_const_value(out, "this." + prop_access(*m_iter), t, (*m_iter)->get_value(), true, true);
       } else {
-        print_const_value(out, 
+        print_const_value(out,
                           "this." + prop_access(*m_iter),
                           t,
                           (*m_iter)->get_value(),
@@ -2088,7 +2088,7 @@ void t_csharp_generator::generate_service_client(t_service* tservice) {
         f_service_ << ", " << normalize_name((*fld_iter)->get_name());
       }
       f_service_ << ");" << endl;
-      
+
       if (!(*f_iter)->is_oneway()) {
         f_service_ << indent();
         if (!(*f_iter)->get_returntype()->is_void()) {
@@ -2103,7 +2103,7 @@ void t_csharp_generator::generate_service_client(t_service* tservice) {
 
     // synchronous invoke
     indent(f_service_) << "send_" << funname << "(";
-  
+
     first = true;
     for (fld_iter = fields.begin(); fld_iter != fields.end(); ++fld_iter) {
       if (first) {
@@ -2114,7 +2114,7 @@ void t_csharp_generator::generate_service_client(t_service* tservice) {
       f_service_ << normalize_name((*fld_iter)->get_name());
     }
     f_service_ << ");" << endl;
-  
+
     if (!(*f_iter)->is_oneway()) {
       f_service_ << indent();
       if (!(*f_iter)->get_returntype()->is_void()) {
@@ -2156,7 +2156,7 @@ void t_csharp_generator::generate_service_client(t_service* tservice) {
     f_service_ << indent() << "args.Write(oprot_);" << endl << indent()
                << "oprot_.WriteMessageEnd();" << endl;
     indent(f_service_) << "return oprot_.Transport.BeginFlush(callback, state);" << endl;
-      
+
     scope_down(f_service_);
     f_service_ << endl;
 
@@ -2882,7 +2882,7 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
   } else {
     indent(out) << prefix << " = new " << field_type_name(f, false) << "();" << endl;
   }
-  
+
 
   string i = tmp("_i");
   indent(out) << "for( int " << i << " = 0; " << i << " < " << obj << ".Count"
