@@ -6,6 +6,7 @@ N3twork Triumph project branch of thrift compiler.
 
 ```
 brew install bison # known to work w/ v3.4.1
+echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
 cd compiler/cpp
 mkdir cmake-build && cd cmake-build
 cmake ..
@@ -61,19 +62,19 @@ C#:
 - `(typearg="name")` annotation, the generated field type will be  of type`type<name>`
 - `(ix="FooIx")` annotation (for any value FooIx) on a list generates and uses custom class FooIxList, a wrapper around list that uses FooIx as its keys
 - `(ix)` annotation on typedef of integral type adds IsValid, IsNone, None definitions
-	
+
 Java:
 
 - `java.oneOf` annotation to generate sum types
 - don't generate a deepCopy method (it complicates sum-type usage)
  * (specifically then we need the interface type to implement deepCopy, which seems annoying, but would be no big deal if really needed)
-	
+
 Python:
 
 - Add an element to thrift_spec identifying the class of enum fields
 - Generate wrapper types for typedefs
 - enums derive from int
-	
+
 General:
 
 - `-drop ANNOTATION` command line flag to drop types/fields matching the given annotation
@@ -87,9 +88,9 @@ General:
 - because we don't have isset
 - we could effectively get this behavior back by only writing non-default values
 - but we're not writing from c#, so we don't care
-	
+
 - "nullable", silverlight support dropped (why: implementation ease; we're not using the features)
-	
+
 == Bugs / Untested ==
 
 - typedefs of typedefs is probably broken (i.e, something like this:
