@@ -267,6 +267,17 @@ public:
     return f->get_type()->is_list() && f->annotations_.count("ix");
   }
 
+  bool field_should_generate_is_set(t_field *f, string *name) {
+    if(!f->annotations_.count("isset")) return false;
+    if(name) {
+      *name = f->annotations_["isset"];
+      if(*name == "1") {
+        *name = prop_name(f) + "IsSet";
+      }
+    }
+    return true;
+  }
+
   bool field_can_be_null(t_field* f) {
     return !field_is_ref_wrapped(f) && !field_is_ix_list(f) && type_can_be_null(f->get_type());
     // bool field_can_be_null(t_field *f) {
@@ -2862,6 +2873,10 @@ void t_csharp_generator::generate_deserialize_field(ostream& out,
            tfield->get_name().c_str(),
            type_name(type).c_str());
   }
+  string issetName;
+  if(field_should_generate_is_set(tfield, &issetName)) {
+    indent(out) << issetName << " = true;\n";
+  }
 }
 
 void t_csharp_generator::generate_deserialize_container(ostream& out,
@@ -3141,6 +3156,10 @@ void t_csharp_generator::generate_csharp_property(ostream& out, t_struct *tstruc
     if (is_tagged_union(tstruct) && REAL_UNION) indent(out) << "[FieldOffset(8)] ";
     else indent(out);
     out << (isPublic ? "public " : "private ") << ft << " " << prop_name(tfield) << ";" << endl;
+    string issetName;
+    if(field_should_generate_is_set(tfield, &issetName)) {
+      indent(out) << (isPublic ? "public " : "private ") << "bool " << issetName << ";" << endl;
+    }
   }
 }
 
