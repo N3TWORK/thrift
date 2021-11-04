@@ -7,6 +7,7 @@ N3twork Triumph project branch of thrift compiler.
 ```
 brew install bison # known to work w/ v3.4.1
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.zshrc
 cd compiler/cpp
 mkdir cmake-build && cd cmake-build
 cmake ..

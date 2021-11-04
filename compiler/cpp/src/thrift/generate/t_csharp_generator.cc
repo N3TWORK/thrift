@@ -218,6 +218,16 @@ public:
       if (t->annotations_.count("alias")) {
         auto u = t->get_type();
         while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
+        auto u_name = type_name(u);
+        if(u_name.find(".") == string::npos) {
+          // string, int etc -- we don't generate these as the typedefed alias type, so we don't need a using,
+          // plus also the using statement would break because it needs a fully-qualified type on the other side
+          //
+          // i.e. we would need to use 'System.String' instead of 'string' and so on for all builtin types
+          //
+          // we could do this but we don't bother because we our generated code is not currently using the alised name right now anyway
+          continue;
+        }
         out << indent << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
       }
     }
