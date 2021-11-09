@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil; tab-width: 2 -*- 
+/* -*- indent-tabs-mode: nil; tab-width: 2 -*-
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -180,7 +180,7 @@ public:
     throw "compiler error: no python name for base type " + t_base_type::t_base_name(t->get_base());
     }
   }
-  
+
   void generate_typedef(t_typedef* ttypedef);
   void generate_enum(t_enum* tenum);
   void generate_const(t_const* tconst);
@@ -283,7 +283,7 @@ public:
     while(t->is_alias()) t = ((t_typedef*)t)->get_type();
     return t;
   }
-  
+
   t_type* unwrap_typedef(t_type* t) {
     while (t->is_typedef()) t = ((t_typedef*)t)->get_type();
     return t;
@@ -437,7 +437,7 @@ protected:
  *
  * @param tprogram The program to generate
  */
-void t_py_generator::init_generator() {  
+void t_py_generator::init_generator() {
   // Make output directory
   string module = get_real_py_module(program_, gen_twisted_);
   package_dir_ = get_out_dir();
@@ -513,6 +513,13 @@ string t_py_generator::render_includes() {
       if(t->annotations_.count("alias")) {
         auto u = t->get_type();
         while (u->is_typedef() && u->annotations_.count("alias")) u = ((t_typedef*)u)->get_type();
+        auto u_name = type_name(u);
+        if(u_name.find(".") == string::npos) {
+          // type_name(u) is not generating the python name we want -- e.g. "string" instead of "str"
+          //
+          // rather than spend time to find and fix, for now just skip
+          continue;
+        }
         result += t->get_symbolic() + " = " + type_name(u) + "\n";
       }
     }
@@ -576,7 +583,7 @@ void t_py_generator::generate_typedef(t_typedef* ttypedef) {
   t_type* base = ttypedef;
   while (base->is_typedef()) base = ((t_typedef*)base)->get_type();
   f_types_ << "\n";
-  indent(f_types_) << "class " << type_name(ttypedef) << "(" << py_type_name(base) << "): pass\n";  
+  indent(f_types_) << "class " << type_name(ttypedef) << "(" << py_type_name(base) << "): pass\n";
 }
 
 /**
@@ -1076,7 +1083,7 @@ void t_py_generator::generate_py_struct_reader(ostream& out, t_struct* tstruct) 
   indent_down();
 
   indent(out) << "iprot.readStructBegin()" << endl;
-  
+
   if (is_immutable(tstruct)) {
     for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
       t_field* tfield = *f_iter;
@@ -2637,7 +2644,7 @@ void t_py_generator::generate_serialize_list_element(ostream& out, t_list* tlist
  */
 void t_py_generator::generate_python_docstring(ostream& out, t_struct* tstruct) {
   // more annoying than helpful, so commenting out (EK)
-  
+
   // generate_python_docstring(out, tstruct, tstruct, "Attributes");
 }
 
