@@ -43,10 +43,10 @@ RUN apt-get update && \
 #     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A6A19B38D3D831EF
 
 # Dart
-RUN curl https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    curl https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > \
-      /etc/apt/sources.list.d/dart_stable.list
-ENV DART_VERSION 1.24.3-1
+#RUN curl https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+#    curl https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > \
+#      /etc/apt/sources.list.d/dart_stable.list
+#ENV DART_VERSION 1.24.3-1
 
 # dotnet (netcore)
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg && \
@@ -78,11 +78,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PATH /usr/lib/llvm-6.0/bin:$PATH
 
 # lib/as3 (ActionScript)
-RUN mkdir -p /usr/local/adobe/flex/4.6 && \
-    cd /usr/local/adobe/flex/4.6 && \
-    wget -q "http://download.macromedia.com/pub/flex/sdk/flex_sdk_4.6.zip" && \
-    unzip flex_sdk_4.6.zip
-ENV FLEX_HOME /usr/local/adobe/flex/4.6
+#RUN mkdir -p /usr/local/adobe/flex/4.6 && \
+#    cd /usr/local/adobe/flex/4.6 && \
+#    wget -q "http://download.macromedia.com/pub/flex/sdk/flex_sdk_4.6.zip" && \
+#    unzip flex_sdk_4.6.zip
+#ENV FLEX_HOME /usr/local/adobe/flex/4.6
 
 RUN apt-get install -y --no-install-recommends \
 `# C++ dependencies` \
@@ -109,39 +109,39 @@ RUN \
     cd .. && \
     rm -rf sbcl*
 
-ENV D_VERSION     2.082.1
-ENV DMD_DEB       dmd_2.082.1-0_amd64.deb
-RUN \
-`# D dependencies` \
-    wget -q http://downloads.dlang.org/releases/2.x/${D_VERSION}/${DMD_DEB} && \
-    dpkg --install ${DMD_DEB} && \
-    rm -f ${DMD_DEB} && \
-    mkdir -p /usr/include/dmd/druntime/import/deimos /usr/include/dmd/druntime/import/C && \
-    curl -sSL https://github.com/D-Programming-Deimos/libevent/archive/master.tar.gz| tar xz && \
-    mv libevent-master/deimos/* /usr/include/dmd/druntime/import/deimos/ && \
-    mv libevent-master/C/* /usr/include/dmd/druntime/import/C/ && \
-    rm -rf libevent-master && \
-    curl -sSL https://github.com/jeking3/openssl/archive/tls_method.tar.gz| tar xz && \
-    mv openssl-tls_method/deimos/* /usr/include/dmd/druntime/import/deimos/ && \
-    mv openssl-tls_method/C/* /usr/include/dmd/druntime/import/C/ && \
-    rm -rf openssl-tls_method
+#ENV D_VERSION     2.082.1
+#ENV DMD_DEB       dmd_2.082.1-0_amd64.deb
+#RUN \
+#`# D dependencies` \
+#    wget -q http://downloads.dlang.org/releases/2.x/${D_VERSION}/${DMD_DEB} && \
+#    dpkg --install ${DMD_DEB} && \
+#    rm -f ${DMD_DEB} && \
+#    mkdir -p /usr/include/dmd/druntime/import/deimos /usr/include/dmd/druntime/import/C && \
+#    curl -sSL https://github.com/D-Programming-Deimos/libevent/archive/master.tar.gz| tar xz && \
+#    mv libevent-master/deimos/* /usr/include/dmd/druntime/import/deimos/ && \
+#    mv libevent-master/C/* /usr/include/dmd/druntime/import/C/ && \
+#    rm -rf libevent-master && \
+#    curl -sSL https://github.com/jeking3/openssl/archive/tls_method.tar.gz| tar xz && \
+#    mv openssl-tls_method/deimos/* /usr/include/dmd/druntime/import/deimos/ && \
+#    mv openssl-tls_method/C/* /usr/include/dmd/druntime/import/C/ && \
+#    rm -rf openssl-tls_method
 
-RUN apt-get install -y --no-install-recommends \
-      `# Dart dependencies` \
-      dart=$DART_VERSION
-ENV PATH /usr/lib/dart/bin:$PATH
+#RUN apt-get install -y --no-install-recommends \
+#      `# Dart dependencies` \
+#      dart=$DART_VERSION
+#ENV PATH /usr/lib/dart/bin:$PATH
 
 RUN apt-get install -y --no-install-recommends \
 `# dotnet core dependencies` \
       dotnet-sdk-2.1
 
-RUN apt-get install -y --no-install-recommends \
-`# Erlang dependencies` \
-      erlang-base \
-      erlang-eunit \
-      erlang-dev \
-      erlang-tools \
-      rebar
+#RUN apt-get install -y --no-install-recommends \
+#`# Erlang dependencies` \
+#      erlang-base \
+#      erlang-eunit \
+#      erlang-dev \
+#      erlang-tools \
+#      rebar
 
 RUN apt-get install -y --no-install-recommends \
 `# GlibC dependencies` \
@@ -157,18 +157,18 @@ RUN curl -fsSL "$GOLANG_DOWNLOAD_URL" -o golang.tar.gz && \
                   ln -s /usr/local/go/bin/go /usr/local/bin && \
                         rm golang.tar.gz
 
-RUN apt-get install -y --no-install-recommends \
-`# Haskell dependencies` \
-      ghc \
-      cabal-install
+#RUN apt-get install -y --no-install-recommends \
+#`# Haskell dependencies` \
+#      ghc \
+#      cabal-install
 
-RUN apt-get install -y --no-install-recommends \
-`# Haxe dependencies` \
-      haxe \
-      neko \
-      neko-dev && \
-    haxelib setup --always /usr/share/haxe/lib && \
-    haxelib install --always hxcpp 2>&1 > /dev/null
+#RUN apt-get install -y --no-install-recommends \
+#`# Haxe dependencies` \
+#      haxe \
+#      neko \
+#      neko-dev && \
+#    haxelib setup --always /usr/share/haxe/lib && \
+#    haxelib install --always hxcpp 2>&1 > /dev/null
 
 RUN apt-get install -y --no-install-recommends \
 `# Java dependencies` \
@@ -195,29 +195,29 @@ RUN apt-get install -y --no-install-recommends \
 `# JS dependencies` \
       libxss1
 
-RUN apt-get install -y --no-install-recommends \
-`# OCaml dependencies` \
-      ocaml \
-      opam && \
-    opam init --yes && \
-    opam install --yes oasis
+#RUN apt-get install -y --no-install-recommends \
+#`# OCaml dependencies` \
+#      ocaml \
+#      opam && \
+#    opam init --yes && \
+#    opam install --yes oasis
 
-RUN apt-get install -y --no-install-recommends \
-`# Perl dependencies` \
-      libbit-vector-perl \
-      libclass-accessor-class-perl \
-      libcrypt-ssleay-perl \
-      libio-socket-ssl-perl \
-      libnet-ssleay-perl
+#RUN apt-get install -y --no-install-recommends \
+#`# Perl dependencies` \
+#      libbit-vector-perl \
+#      libclass-accessor-class-perl \
+#      libcrypt-ssleay-perl \
+#      libio-socket-ssl-perl \
+#      libnet-ssleay-perl
 
-RUN apt-get install -y --no-install-recommends \
-`# Php dependencies` \
-      php \
-      php-cli \
-      php-dev \
-      php-pear \
-      re2c \
-      composer
+#RUN apt-get install -y --no-install-recommends \
+#`# Php dependencies` \
+#      php \
+#      php-cli \
+#      php-dev \
+#      php-pear \
+#      re2c \
+#      composer
 
 RUN apt-get install -y --no-install-recommends \
 `# Python dependencies` \
@@ -247,16 +247,16 @@ RUN apt-get install -y --no-install-recommends \
       python3-wheel \
       python3-zope.interface
 
-RUN apt-get install -y --no-install-recommends \
-`# Ruby dependencies` \
-      ruby \
-      ruby-dev \
-      ruby-bundler
+#RUN apt-get install -y --no-install-recommends \
+#`# Ruby dependencies` \
+#      ruby \
+#      ruby-dev \
+#      ruby-bundler
 
-RUN apt-get install -y --no-install-recommends \
-`# Rust dependencies` \
-      cargo \
-      rustc
+#RUN apt-get install -y --no-install-recommends \
+#`# Rust dependencies` \
+#      cargo \
+#      rustc
 
 # cppcheck-1.82 has a nasty cpp parser bug, so we're using something newer
 RUN apt-get install -y --no-install-recommends \

@@ -8,10 +8,24 @@ N3twork Triumph project branch of thrift compiler.
 brew install bison # known to work w/ v3.4.1
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
 echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.zshrc
-cd compiler/cpp
 mkdir cmake-build && cd cmake-build
 cmake ..
-make
+make thrift-compiler -j$(nproc)
+```
+
+# Building Linux binary (using docker)
+
+```
+docker build -t thrift build/docker/ubuntu-bionic
+docker run --rm -it --entrypoint bash -v (pwd):/thrift_src thrift
+
+# Once inside docker container
+cd /thrift_src
+mkdir cmake-build && cd cmake-build
+cmake ..
+make thrift-compiler -j$(nproc)
+
+# binary location: thrift_repo/cmake-build/compiler/cpp/bin/thrift
 ```
 
 # Publishing `lib/java` to our mvn repo
