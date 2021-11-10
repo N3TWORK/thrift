@@ -1440,7 +1440,7 @@ void t_csharp_generator::generate_csharp_struct_result_writer(ostream& out, t_st
       if (nullable_) {
         out << "(this." << prop_name((*f_iter)) << " != null) {" << endl;
       } else {
-        out << "{" << endl;
+        out << "(this." << prop_name((*f_iter)) << " != null) {" << endl;
       }
       indent_up();
 
@@ -2247,7 +2247,7 @@ void t_csharp_generator::generate_service_client(t_service* tservice) {
                        << "  return result.Success.Value;" << endl << indent() << "}" << endl;
           }
         } else {
-          f_service_ << indent() << "if (result.__isset.success) {" << endl << indent()
+          f_service_ << indent() << "if (result.Success != null) {" << endl << indent()
                      << "  return result.Success;" << endl << indent() << "}" << endl;
         }
       }
@@ -2260,8 +2260,8 @@ void t_csharp_generator::generate_service_client(t_service* tservice) {
                      << indent() << "  throw result." << prop_name(*x_iter) << ";" << endl
                      << indent() << "}" << endl;
         } else {
-          f_service_ << indent() << "if (result.__isset." << normalize_name((*x_iter)->get_name())
-                     << ") {" << endl << indent() << "  throw result." << prop_name(*x_iter) << ";"
+          f_service_ << indent() << "if (result." << prop_name(*x_iter)
+                     << " != null) {" << endl << indent() << "  throw result." << prop_name(*x_iter) << ";"
                      << endl << indent() << "}" << endl;
         }
       }

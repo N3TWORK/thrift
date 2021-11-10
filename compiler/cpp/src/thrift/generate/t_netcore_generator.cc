@@ -1751,7 +1751,7 @@ void t_netcore_generator::generate_service_client(ostream& out, t_service* tserv
                 }
                 else
                 {
-                    out << indent() << "if (result.__isset.success)" << endl
+                    out << indent() << "if (result.Success != null)" << endl
                         << indent() << "{" << endl;
                     indent_up();
                     out << indent() << "return result.Success;" << endl;
