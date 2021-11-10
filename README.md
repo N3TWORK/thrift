@@ -13,6 +13,21 @@ cmake ..
 make thrift-compiler -j$(nproc)
 ```
 
+# Building Linux binary (using docker)
+
+```
+docker build -t thrift build/docker/ubuntu-bionic
+docker run --rm -it --entrypoint bash -v (pwd):/thrift_src thrift
+
+# Once inside docker container
+cd /thrift_src
+mkdir cmake-build && cd cmake-build
+cmake ..
+make thrift-compiler -j$(nproc)
+
+# binary location: thrift_repo/cmake-build/compiler/cpp/bin/thrift
+```
+
 # Publishing `lib/java` to our mvn repo
 
 Latest version published 4/7/2020 from the `n3/tri` branch: `0.12.1-N3-TRIUMPH.1`.
