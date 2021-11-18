@@ -1012,7 +1012,9 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   prepare_member_name_mapping(tstruct);
 
   generate_type_attrs(out, tstruct);
-  indent(out) << "[Serializable]" << endl;
+  if (!tstruct->annotations_.count("csharp.removeSerializable")) {
+    indent(out) << "[Serializable]" << endl;
+  }
   if ((serialize_ || wcf_) && !is_exception) {
     indent(out) << "[DataContract(Namespace=\"" << wcf_namespace_ << "\")]"
                 << endl; // do not make exception classes directly WCF serializable, we provide a
@@ -1215,9 +1217,11 @@ void t_csharp_generator::generate_csharp_struct_set_defaults_body(ostream& out, 
 
 void t_csharp_generator::generate_csharp_wcffault(ostream& out, t_struct* tstruct) {
   out << endl;
-  indent(out) << "#if !SILVERLIGHT" << endl;
-  indent(out) << "[Serializable]" << endl;
-  indent(out) << "#endif" << endl;
+  if (!tstruct->annotations_.count("csharp.removeSerializable")) {
+    indent(out) << "#if !SILVERLIGHT" << endl;
+    indent(out) << "[Serializable]" << endl;
+    indent(out) << "#endif" << endl;
+  }
   indent(out) << "[DataContract]" << endl;
   bool is_final = (tstruct->annotations_.find("final") != tstruct->annotations_.end());
 
