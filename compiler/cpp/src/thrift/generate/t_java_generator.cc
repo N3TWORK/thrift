@@ -410,7 +410,7 @@ public:
     return prefix + "." + package_name_ + ".I" + t->get_name();
   }
 
-  std::string field_type_name(t_field *f, 
+  std::string field_type_name(t_field *f,
                         bool in_container = false,
                         bool in_init = false,
                         bool skip_generic = false,
@@ -1738,7 +1738,7 @@ void t_java_generator::generate_java_struct_definition(ostream& out,
   generate_java_scheme_lookup(out);
 
   scope_down(out);
-  
+
   out << endl;
 }
 
@@ -1984,7 +1984,7 @@ void t_java_generator::generate_java_struct_equality(ostream& out, t_struct* tst
         << "    return Value.equals(that.Value);\n";
   } else {
 
-    
+
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       out << endl;
 
@@ -2040,10 +2040,21 @@ void t_java_generator::generate_java_struct_equality(ostream& out, t_struct* tst
   if(is_sum_type(tstruct)) {
     indent(out) << "return Value == null ? 0 : Value.hashCode();\n";
   } else {
-  
+
     indent(out) << "int hashCode = 1;" << endl;
 
+    bool all_members = true;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if((*m_iter)->annotations_.count("hashkey")) {
+        all_members = false;
+        break;
+      }
+    }
+
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if(!all_members && !(*m_iter)->annotations_.count("hashkey")) {
+        continue;
+      }
       out << endl;
 
       t_type* t = get_true_type((*m_iter)->get_type());
@@ -2581,7 +2592,7 @@ void t_java_generator::generate_java_bean_boilerplate(ostream& out, t_struct* ts
           indent(out) << "return this." << field_name << ";" << endl;
         else
           indent(out) << "return this.Value instanceof " << ftnm << " ? (" << ftnm << ")this.Value : null;" << endl;
-        
+
         indent_down();
         indent(out) << "}" << endl << endl;
       }
@@ -2607,7 +2618,7 @@ void t_java_generator::generate_java_bean_boilerplate(ostream& out, t_struct* ts
       }else{
         indent(out) << " : java.nio.ByteBuffer.wrap(" << field_name << ".clone());" << endl;
       }
-                 
+
       if (!bean_style_) {
         indent(out) << "  return this;" << endl;
       }
@@ -3848,7 +3859,7 @@ void t_java_generator::generate_deserialize_field(ostream& out,
     indent(out) << prefix << "set" << get_cap_name(tfield->get_name()) << "(" << v << ");" << endl;
     return;
   }
-  
+
   t_type* type = get_true_type(tfield->get_type());
 
   if (type->is_void()) {
