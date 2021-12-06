@@ -1996,7 +1996,7 @@ void t_java_generator::generate_java_struct_equality(ostream& out, t_struct* tst
       if(!all_members && !(*m_iter)->annotations_.count("hashkey")) {
         continue;
       }
-      
+
       out << endl;
 
       t_type* t = get_true_type((*m_iter)->get_type());
@@ -2142,7 +2142,20 @@ void t_java_generator::generate_java_struct_compare_to(ostream& out, t_struct* t
 
   const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
+
+  bool all_members = true;
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+    if((*m_iter)->annotations_.count("hashkey")) {
+      all_members = false;
+      break;
+    }
+  }
+
+  for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+    if(!all_members && !(*m_iter)->annotations_.count("hashkey")) {
+      continue;
+    }
+
     t_field* field = *m_iter;
     indent(out) << "lastComparison = java.lang.Boolean.valueOf(" << generate_isset_check(field)
                 << ").compareTo(other." << generate_isset_check(field) << ");" << endl;
