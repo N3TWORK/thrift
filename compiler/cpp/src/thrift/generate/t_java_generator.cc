@@ -1984,8 +1984,19 @@ void t_java_generator::generate_java_struct_equality(ostream& out, t_struct* tst
         << "    return Value.equals(that.Value);\n";
   } else {
 
+    bool all_members = true;
+    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if((*m_iter)->annotations_.count("hashkey")) {
+        all_members = false;
+        break;
+      }
+    }
 
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
+      if(!all_members && !(*m_iter)->annotations_.count("hashkey")) {
+        continue;
+      }
+      
       out << endl;
 
       t_type* t = get_true_type((*m_iter)->get_type());
