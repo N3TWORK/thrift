@@ -745,6 +745,10 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
       indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
       indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
     }
+    if(vnm == "string") {
+      indent(out) << "public bool IsEmpty() { return Value == null || Value.Length == 0; }\n";
+      indent(out) << "public " << nm << " Or(" << nm << " that) { return IsEmpty() ? that : this; }\n";
+     }
     scope_down(out);
     out << endl;
   }
