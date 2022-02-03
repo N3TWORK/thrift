@@ -729,7 +729,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
     indent(out) << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
     scope_up(out);
     indent(out) << "public " << vnm << " Value;\n";
-    indent(out) << endl;
+    out << "\n";
     indent(out) << "public " << nm << "(" << vnm << " value) => Value = value;" << endl;
     indent(out) << "public bool Equals(" << nm << " other) => Value != null ? this.Value.Equals(other.Value) : other.Value == null;\n";
     indent(out) << "public int CompareTo(" << nm << " other) => Value != null ? Value.CompareTo(other.Value) : other.Value != null ? -1 : 0;\n";
@@ -1276,7 +1276,7 @@ void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* t
 
   indent(out) << "field = iprot.ReadFieldBegin();" << endl;
 
-  indent(out) << "if (field.Type == TType.Stop) { " << endl;
+  indent(out) << "if (field.Type == TType.Stop) {" << endl;
   indent_up();
   indent(out) << "break;" << endl;
   indent_down();
@@ -1301,12 +1301,12 @@ void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* t
     }
 
     indent_down();
-    out << indent() << "} else { " << endl << indent() << indent_str() << "TProtocolUtil.Skip(iprot, field.Type);"
+    out << indent() << "} else {" << endl << indent() << indent_str() << "TProtocolUtil.Skip(iprot, field.Type);"
         << endl << indent() << "}" << endl << indent() << "break;" << endl;
     indent_down();
   }
 
-  indent(out) << "default: " << endl;
+  indent(out) << "default:" << endl;
   indent_up();
   indent(out) << "TProtocolUtil.Skip(iprot, field.Type);" << endl;
   indent(out) << "break;" << endl;
@@ -2770,7 +2770,7 @@ void t_csharp_generator::generate_csharp_union_reader(std::ostream& out, t_struc
     indent(out) << "retval = new " << (*f_iter)->get_name() << "(temp);" << endl;
 
     indent_down();
-    out << indent() << "} else { " << endl << indent() << "  TProtocolUtil.Skip(iprot, field.Type);"
+    out << indent() << "} else {" << endl << indent() << "  TProtocolUtil.Skip(iprot, field.Type);"
         << endl << indent() << "  retval = new ___undefined();" << endl << indent() << "}" << endl
         << indent() << "break;" << endl;
     indent_down();
