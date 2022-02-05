@@ -977,6 +977,7 @@ string t_csharp_generator::render_const_value(ostream& out,
 }
 
 void t_csharp_generator::generate_struct(t_struct* tstruct) {
+  tmp_ = 0;
   if (union_ && tstruct->is_union()) {
     generate_csharp_union(tstruct);
   } else {
