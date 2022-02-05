@@ -3523,7 +3523,7 @@ string t_csharp_generator::type_to_enum(t_type* type) {
 }
 
 void t_csharp_generator::generate_csharp_docstring_comment(ostream& out, string contents) {
-  generate_docstring_comment(out, "/// <summary>\n", "/// ", contents, "/// </summary>\n");
+  // generate_docstring_comment(out, "/// <summary>\n", "/// ", contents, "/// </summary>\n");
 }
 
 void t_csharp_generator::generate_csharp_doc(ostream& out, t_field* field) {
