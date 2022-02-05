@@ -211,7 +211,10 @@ public:
   void start_csharp_namespace(std::ostream& out);
   void end_csharp_namespace(std::ostream& out);
 
+  std::set<string> aliases_;
+
   void write_typedef_usings(string indent, std::ostream& out) {
+    aliases_.clear();
     auto typedefs = program_->get_typedefs();
     for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
       auto t = *i;
@@ -228,7 +231,9 @@ public:
           // we could do this but we don't bother because we our generated code is not currently using the alised name right now anyway
           continue;
         }
-        out << indent << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
+        auto full_type_name = type_name(u);
+        out << indent << "using " << t->get_symbolic() << " = " << full_type_name + ";\n";
+        aliases_.insert(full_type_name);
       }
     }
   }
@@ -1090,7 +1095,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
 
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    generate_csharp_doc(out, *m_iter);
+    // generate_csharp_doc(out, *m_iter);
     generate_property(out, tstruct, *m_iter, true, true);
     bool is_required = field_is_required((*m_iter));
     bool has_default = field_has_default((*m_iter));
@@ -3357,7 +3362,10 @@ string t_csharp_generator::type_name(t_type* ttype,
   if (program != NULL && program->get_path() != program_->get_path()) {
     string ns = program->get_namespace("csharp");
     if (!ns.empty()) {
-      return ns + "." + normalize_name(ttype->get_name()) + postfix;
+      string simple_name = normalize_name(ttype->get_name());
+      string complex_name = ns + "." + simple_name;
+      if(aliases_.count(complex_name)) return simple_name + postfix;
+      return complex_name + postfix;
     }
   }
 
