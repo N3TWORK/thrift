@@ -680,6 +680,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   string vnm = type_name(t);
 
   if (is_numeric_base_type(t)) {
+    out << "\n";
     out << "\t" << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << "> {\n";
     out << "\t\t" << "public " << vnm << " Value;\n";
     out << "\n";
@@ -726,6 +727,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
     }
     out << "	}\n";
   } else {
+    out << "\n";
     indent(out) << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
     scope_up(out);
     indent(out) << "public " << vnm << " Value;\n";
