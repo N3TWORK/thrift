@@ -773,6 +773,7 @@ void t_csharp_generator::generate_enum(t_enum* tenum) {
 
   generate_csharp_doc(f_enum, tenum);
 
+  f_enum << "\n";
   indent(f_enum) << "public enum " << tenum->get_name() << "\n";
   scope_up(f_enum);
 
