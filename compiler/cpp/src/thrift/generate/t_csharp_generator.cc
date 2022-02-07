@@ -655,7 +655,7 @@ string t_csharp_generator::csharp_type_usings() {
 }
 
 string t_csharp_generator::csharp_thrift_usings() {
-  return string() + "using Thrift.Protocol;\n" + "using Thrift.Transport;\n" + "#pragma warning disable CS0472 // comparison of non-nullable types (easier to always generate comparisons)\n";
+  return string() + "using Thrift.Protocol;\n" + "using Thrift.Transport;\n";
 }
 
 void t_csharp_generator::close_generator() {
