@@ -211,7 +211,10 @@ public:
   void start_csharp_namespace(std::ostream& out);
   void end_csharp_namespace(std::ostream& out);
 
+  std::set<string> aliases_;
+
   void write_typedef_usings(string indent, std::ostream& out) {
+    aliases_.clear();
     auto typedefs = program_->get_typedefs();
     for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
       auto t = *i;
@@ -228,7 +231,9 @@ public:
           // we could do this but we don't bother because we our generated code is not currently using the alised name right now anyway
           continue;
         }
-        out << indent << "using " << t->get_symbolic() << " = " << type_name(u) + ";\n";
+        auto full_type_name = type_name(u);
+        out << indent << "using " << t->get_symbolic() << " = " << full_type_name + ";\n";
+        aliases_.insert(full_type_name);
       }
     }
   }
@@ -279,11 +284,15 @@ public:
   }
 
   bool field_can_be_null(t_field* f) {
-    return !field_is_ref_wrapped(f) && !field_is_ix_list(f) && type_can_be_null(f->get_type());
-    // bool field_can_be_null(t_field *f) {
-    //   if (!field_is_required(f)) return true;
-    //   return type_can_be_null(f->get_type());
-    // }
+    if(field_is_ix_list(f)) return true;
+    if(field_is_ref_wrapped(f)) return true;
+    return type_can_be_null(f->get_type());
+  }
+
+  string field_null_check_name(t_field *f) {
+    if(field_is_ix_list(f)) return prop_name(f) + ".List";
+    if(field_is_ref_wrapped(f)) return prop_name(f);
+    return prop_access(f);
   }
 
   // does field wrap a value type in a Ref<> class?
@@ -292,6 +301,7 @@ public:
      if (field_is_required(f) || field_has_default(f)) return false;
      if (is_tagged_union(f->parent_struct_)) return false;
      if(f->annotations_.count("csharp.noref")) return false;
+     if(is_wrapped_typedef(f->get_type())) return false;
      return is_cs_struct(unwrap_alias(f->get_type()));
   }
 
@@ -399,12 +409,12 @@ public:
     f << "			set => List[(int)i] = value;\n";
     f << "		}\n";
     f << "\n";
-    f << "		public " << nm << "(int capacity) => List = new List<T>(capacity); \n";
+    f << "		public " << nm << "(int capacity) => List = new List<T>(capacity);\n";
     f << "\n";
     f << "		public int Count => List.Count;\n";
     f << "		public " << ix << " End => (" << ix << ")List.Count;\n";
     f << "		public void Add(T t) => List.Add(t);\n";
-    f << "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();		\n";
+    f << "		public List<T>.Enumerator GetEnumerator() => List.GetEnumerator();\n";
     f << "		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => List.GetEnumerator();\n";
     f << "\n";
     f << "		public override string ToString() => List != null ? List.ToString() : \"<null>\";\n";
@@ -419,7 +429,7 @@ public:
     f << "\n";
     f << "			public " << ix << " Current => I;\n";
     f << "			public bool MoveNext() {\n";
-    f << "				I = (" << ix << ")((int)I + 1)\n;";
+    f << "				I = (" << ix << ")((int)I + 1);\n";
     f << "				return (int)I < List.Count;\n";
     f << "			}\n";
     f << "			public KeyIter GetEnumerator() => this;\n";
@@ -645,7 +655,7 @@ string t_csharp_generator::csharp_type_usings() {
 }
 
 string t_csharp_generator::csharp_thrift_usings() {
-  return string() + "using Thrift.Protocol;\n" + "using Thrift.Transport;\n" + "#pragma warning disable CS0472 // comparison of non-nullable types (easier to always generate comparisons)\n";
+  return string() + "using Thrift.Protocol;\n" + "using Thrift.Transport;\n";
 }
 
 void t_csharp_generator::close_generator() {
@@ -680,6 +690,7 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
   string vnm = type_name(t);
 
   if (is_numeric_base_type(t)) {
+    out << "\n";
     out << "\t" << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << "> {\n";
     out << "\t\t" << "public " << vnm << " Value;\n";
     out << "\n";
@@ -726,10 +737,11 @@ void t_csharp_generator::generate_csharp_typedef_definition(ostream& out, t_type
     }
     out << "	}\n";
   } else {
+    out << "\n";
     indent(out) << "[Serializable] public partial struct " << nm << " : IValue<" << vnm << ">, IComparable<" << nm << ">, IEquatable<" << nm << ">\n";
     scope_up(out);
     indent(out) << "public " << vnm << " Value;\n";
-    indent(out) << endl;
+    out << "\n";
     indent(out) << "public " << nm << "(" << vnm << " value) => Value = value;" << endl;
     indent(out) << "public bool Equals(" << nm << " other) => Value != null ? this.Value.Equals(other.Value) : other.Value == null;\n";
     indent(out) << "public int CompareTo(" << nm << " other) => Value != null ? Value.CompareTo(other.Value) : other.Value != null ? -1 : 0;\n";
@@ -766,6 +778,7 @@ void t_csharp_generator::generate_enum(t_enum* tenum) {
 
   generate_csharp_doc(f_enum, tenum);
 
+  f_enum << "\n";
   indent(f_enum) << "public enum " << tenum->get_name() << "\n";
   scope_up(f_enum);
 
@@ -977,6 +990,7 @@ string t_csharp_generator::render_const_value(ostream& out,
 }
 
 void t_csharp_generator::generate_struct(t_struct* tstruct) {
+  tmp_ = 0;
   if (union_ && tstruct->is_union()) {
     generate_csharp_union(tstruct);
   } else {
@@ -1087,7 +1101,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
   }
 
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    generate_csharp_doc(out, *m_iter);
+    // generate_csharp_doc(out, *m_iter);
     generate_property(out, tstruct, *m_iter, true, true);
     bool is_required = field_is_required((*m_iter));
     bool has_default = field_has_default((*m_iter));
@@ -1118,6 +1132,7 @@ void t_csharp_generator::generate_csharp_struct_definition(ostream& out,
         indent(out) << "public static explicit operator " << vnm << "(" << nm << " x) { return x.Value; }\n";
         indent(out) << "public static explicit operator " << nm << "(" << vnm << " x) { return new " << nm << "(x); }\n";
     }
+    out << "\n";
   }
 
   if (!is_cs_struct(tstruct)) {
@@ -1276,7 +1291,7 @@ void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* t
 
   indent(out) << "field = iprot.ReadFieldBegin();" << endl;
 
-  indent(out) << "if (field.Type == TType.Stop) { " << endl;
+  indent(out) << "if (field.Type == TType.Stop) {" << endl;
   indent_up();
   indent(out) << "break;" << endl;
   indent_down();
@@ -1301,12 +1316,12 @@ void t_csharp_generator::generate_csharp_struct_reader(ostream& out, t_struct* t
     }
 
     indent_down();
-    out << indent() << "} else { " << endl << indent() << indent_str() << "TProtocolUtil.Skip(iprot, field.Type);"
+    out << indent() << "} else {" << endl << indent() << indent_str() << "TProtocolUtil.Skip(iprot, field.Type);"
         << endl << indent() << "}" << endl << indent() << "break;" << endl;
     indent_down();
   }
 
-  indent(out) << "default: " << endl;
+  indent(out) << "default:" << endl;
   indent_up();
   indent(out) << "TProtocolUtil.Skip(iprot, field.Type);" << endl;
   indent(out) << "break;" << endl;
@@ -1368,7 +1383,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       if (is_required)
       {
         if (null_allowed) {
-          indent(out) << "if (" << prop_access((*f_iter)) << " == null)" << endl;
+          indent(out) << "if (" << field_null_check_name((*f_iter)) << " == null)" << endl;
           indent_up();
           out << indent()
               << "throw new TProtocolException(TProtocolException.INVALID_DATA, "
@@ -1382,7 +1397,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
         if (is_tagged_union(tstruct)) {
           out << indent() << "if (Tag == Fields." << prop_name(*f_iter) << ") {\n";
         } else if (null_allowed) {
-          out << indent() << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
+          out << indent() << "if (" << field_null_check_name((*f_iter)) << " != null) {" << endl;
         } else if (field_is_ref_wrapped(*f_iter)) {
           out << indent() << "if (" << prop_name(*f_iter) << " != null) {" << endl;
         } else {
@@ -1522,9 +1537,9 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
       indent(out) << "if (" << prop_name((*f_iter)) << " != null) {" << endl;
       indent_up();
     } else if (!is_required) {
-      bool null_allowed = type_can_be_null((*f_iter)->get_type());
+      bool null_allowed = field_can_be_null((*f_iter));
       if (null_allowed) {
-        indent(out) << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
+        indent(out) << "if (" << field_null_check_name((*f_iter)) << " != null) {" << endl;
         indent_up();
       } else {
         indent(out) << "{" << endl;
@@ -1546,7 +1561,7 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
 
     t_type* ttype = (*f_iter)->get_type();
     if (field_can_be_null(*f_iter)) {
-      indent(out) << "__sb.Append(" << prop_name((*f_iter))
+      indent(out) << "__sb.Append(" << field_null_check_name((*f_iter))
                   << " == null ? \"<null>\" : " << prop_name((*f_iter)) << ".ToString());" << endl;
     } else {
       indent(out) << "__sb.Append(" << prop_name((*f_iter)) << ");" << endl;
@@ -2770,7 +2785,7 @@ void t_csharp_generator::generate_csharp_union_reader(std::ostream& out, t_struc
     indent(out) << "retval = new " << (*f_iter)->get_name() << "(temp);" << endl;
 
     indent_down();
-    out << indent() << "} else { " << endl << indent() << "  TProtocolUtil.Skip(iprot, field.Type);"
+    out << indent() << "} else {" << endl << indent() << "  TProtocolUtil.Skip(iprot, field.Type);"
         << endl << indent() << "  retval = new ___undefined();" << endl << indent() << "}" << endl
         << indent() << "break;" << endl;
     indent_down();
@@ -3354,7 +3369,10 @@ string t_csharp_generator::type_name(t_type* ttype,
   if (program != NULL && program->get_path() != program_->get_path()) {
     string ns = program->get_namespace("csharp");
     if (!ns.empty()) {
-      return ns + "." + normalize_name(ttype->get_name()) + postfix;
+      string simple_name = normalize_name(ttype->get_name());
+      string complex_name = ns + "." + simple_name;
+      if(aliases_.count(complex_name)) return simple_name + postfix;
+      return complex_name + postfix;
     }
   }
 
@@ -3520,7 +3538,7 @@ string t_csharp_generator::type_to_enum(t_type* type) {
 }
 
 void t_csharp_generator::generate_csharp_docstring_comment(ostream& out, string contents) {
-  generate_docstring_comment(out, "/// <summary>\n", "/// ", contents, "/// </summary>\n");
+  // generate_docstring_comment(out, "/// <summary>\n", "/// ", contents, "/// </summary>\n");
 }
 
 void t_csharp_generator::generate_csharp_doc(ostream& out, t_field* field) {

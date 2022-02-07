@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil; tab-width: 2 -*- 
+/* -*- indent-tabs-mode: nil; tab-width: 2 -*-
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -214,7 +214,7 @@ protected:
   int indent_count() { return indent_; }
 
   void indent_validate( int expected, const char * func_name) {
-    if (indent_ != expected) { 
+    if (indent_ != expected) {
       pverbose("Wrong indent count in %s: difference = %i \n", func_name, (expected - indent_));
     }
   }
@@ -368,7 +368,7 @@ protected:
     return "  ";
   }
 
-private:
+protected:
   /**
    * Current code indentation level
    */
