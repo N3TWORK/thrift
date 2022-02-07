@@ -284,11 +284,15 @@ public:
   }
 
   bool field_can_be_null(t_field* f) {
-    return !field_is_ref_wrapped(f) && !field_is_ix_list(f) && type_can_be_null(f->get_type());
-    // bool field_can_be_null(t_field *f) {
-    //   if (!field_is_required(f)) return true;
-    //   return type_can_be_null(f->get_type());
-    // }
+    if(field_is_ix_list(f)) return true;
+    if(field_is_ref_wrapped(f)) return true;
+    return type_can_be_null(f->get_type());
+  }
+
+  string field_null_check_name(t_field *f) {
+    if(field_is_ix_list(f)) return prop_name(f) + ".List";
+    if(field_is_ref_wrapped(f)) return prop_name(f);
+    return prop_access(f);
   }
 
   // does field wrap a value type in a Ref<> class?
@@ -297,6 +301,7 @@ public:
      if (field_is_required(f) || field_has_default(f)) return false;
      if (is_tagged_union(f->parent_struct_)) return false;
      if(f->annotations_.count("csharp.noref")) return false;
+     if(is_wrapped_typedef(f->get_type())) return false;
      return is_cs_struct(unwrap_alias(f->get_type()));
   }
 
@@ -1378,7 +1383,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
       if (is_required)
       {
         if (null_allowed) {
-          indent(out) << "if (" << prop_access((*f_iter)) << " == null)" << endl;
+          indent(out) << "if (" << field_null_check_name((*f_iter)) << " == null)" << endl;
           indent_up();
           out << indent()
               << "throw new TProtocolException(TProtocolException.INVALID_DATA, "
@@ -1392,7 +1397,7 @@ void t_csharp_generator::generate_csharp_struct_writer(ostream& out, t_struct* t
         if (is_tagged_union(tstruct)) {
           out << indent() << "if (Tag == Fields." << prop_name(*f_iter) << ") {\n";
         } else if (null_allowed) {
-          out << indent() << "if (" << prop_access((*f_iter)) << " != null) {" << endl;
+          out << indent() << "if (" << field_null_check_name((*f_iter)) << " != null) {" << endl;
         } else if (field_is_ref_wrapped(*f_iter)) {
           out << indent() << "if (" << prop_name(*f_iter) << " != null) {" << endl;
         } else {
@@ -1556,7 +1561,7 @@ void t_csharp_generator::generate_csharp_struct_tostring(ostream& out, t_struct*
 
     t_type* ttype = (*f_iter)->get_type();
     if (field_can_be_null(*f_iter)) {
-      indent(out) << "__sb.Append(" << prop_name((*f_iter))
+      indent(out) << "__sb.Append(" << field_null_check_name((*f_iter))
                   << " == null ? \"<null>\" : " << prop_name((*f_iter)) << ".ToString());" << endl;
     } else {
       indent(out) << "__sb.Append(" << prop_name((*f_iter)) << ");" << endl;
