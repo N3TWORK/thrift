@@ -17,7 +17,7 @@ make thrift-compiler -j$(nproc)
 
 ```
 docker build -t thrift build/docker/ubuntu-bionic
-docker run --rm -it --entrypoint bash -v (pwd):/thrift_src thrift
+docker run --rm -it --entrypoint bash -v $(pwd):/thrift_src thrift
 
 # Once inside docker container
 cd /thrift_src

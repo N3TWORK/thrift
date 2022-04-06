@@ -2632,7 +2632,7 @@ void t_java_generator::generate_java_bean_boilerplate(ostream& out, t_struct* ts
       if (bean_style_) {
         out << "void";
       } else {
-        out << type_name(tstruct);
+        out << tstruct->get_name();
       }
       out << " set" << cap_name << "(byte[] " << field_name << ") {" << endl;
       indent(out) << "  this." << field_name << " = " << field_name << " == null ? (java.nio.ByteBuffer)null";
@@ -2655,7 +2655,7 @@ void t_java_generator::generate_java_bean_boilerplate(ostream& out, t_struct* ts
     if (bean_style_) {
       out << "void";
     } else {
-      out << type_name(tstruct);
+      out << tstruct->get_name();
     }
     out << " set" << cap_name << "(" << (type_can_be_null(type) ? (java_nullable_annotation() + " ") : "")
         << ftnm << " " << field_name << ") {" << endl;
