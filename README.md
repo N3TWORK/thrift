@@ -4,6 +4,18 @@ N3twork Triumph project branch of thrift compiler.
 
 (Note: A build is checked into the triumph repo, so you only need to do this if you want to make further modifications to the compiler.)
 
+Triumph-specific build instructions. Why? Because it results in a build without thrift Version strings all over it. There's a better fix for this I'm sure, but adding these instructions here because not doing it this way led to lots of diffs in generated code:
+```
+brew install bison # known to work w/ v3.4.1
+echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.zshrc
+cd compiler/cpp
+mkdir cmake-build && cd cmake-build
+cmake ..
+make thrift-compiler -j$(nproc)
+```
+
+Build instructions that result in valid Thrift version number in the generated code.
 ```
 brew install bison # known to work w/ v3.4.1
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
