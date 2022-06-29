@@ -6,7 +6,7 @@ N3twork Triumph project branch of thrift compiler.
 
 Triumph-specific build instructions. Why? Because it results in a build without thrift Version strings all over it. There's a better fix for this I'm sure, but adding these instructions here because not doing it this way led to lots of diffs in generated code:
 ```
-brew install bison # known to work w/ v3.4.1
+brew install cmake bison # known to work w/ cmake 3.23.3 and bison v3.8.2
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
 echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.zshrc
 cd compiler/cpp
