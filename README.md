@@ -15,6 +15,20 @@ cmake ..
 make thrift-compiler -j$(nproc)
 ```
 
+CAUTION: I (EK) had to install 3.24.20220708 using --HEAD to get old macos versions to be supported by the thrift executable
+
+(you can check like this
+
+```
+$ otool -l bin/thrift | rg minos
+    minos 11.0
+$ file bin/thrift
+thrift: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64Mach-O 64-bit executable x86_64] [arm64]
+thrift (for architecture x86_64):	Mach-O 64-bit executable x86_64
+thrift (for architecture arm64):	Mach-O 64-bit executable arm64
+```
+)
+
 Build instructions that result in valid Thrift version number in the generated code.
 ```
 brew install bison # known to work w/ v3.4.1
