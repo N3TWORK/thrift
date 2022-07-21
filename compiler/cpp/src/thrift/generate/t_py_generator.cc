@@ -493,7 +493,7 @@ void t_py_generator::init_generator() {
   // Print header
   f_types_ << py_autogen_comment() << endl
            << py_imports() << endl
-           << render_includes() << endl
+           << render_includes()
            << "from thrift.transport import TTransport" << endl
            << import_dynbase_;
 
@@ -515,8 +515,8 @@ string t_py_generator::render_includes() {
     result += "import " + get_real_py_module(includes[i], gen_twisted_, package_prefix_) + ".ttypes\n";
   }
   auto typedefs = program_->get_typedefs();
+  bool first = true;
   if(!typedefs.empty()) {
-    result += "\n";
     for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
       auto t = *i;
       if(t->annotations_.count("alias")) {
@@ -529,11 +529,16 @@ string t_py_generator::render_includes() {
           // rather than spend time to find and fix, for now just skip
           continue;
         }
+        if(first) {
+          result += "\n";
+          first = false;
+        }
         result += t->get_symbolic() + " = " + type_name(u) + "\n";
         aliased_name[u] = t->get_symbolic();
       }
     }
   }
+  if(result != "") result += "\n";
   return result;
 }
 
@@ -801,10 +806,7 @@ void t_py_generator::generate_py_struct(t_struct* tstruct, bool is_exception) {
  * Generate the thrift_spec for a struct
  * For example,
  *   all_structs.append(Recursive)
- *   Recursive.thrift_spec = (
- *       None,  # 0
- *       (1, TType.LIST, 'Children', (TType.STRUCT, (Recursive, None), False), None, ),  # 1
- *   )
+ *   Recursive.thrift_spec = (...)
  */
 void t_py_generator::generate_py_thrift_spec(ostream& out,
                                              t_struct* tstruct,
@@ -835,7 +837,6 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
 
         << type_to_python_enum_spec((*m_iter)->get_type()) << ", " // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
         << type_to_python_typedef_spec((*m_iter)->get_type()) << ", " // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
-
 
         << (((*m_iter)->get_req() == t_field::T_REQUIRED) ? "True" : "False") << ", " // required field? [7]
         << annotations_dict(*m_iter) << ", " // annotations [8]
