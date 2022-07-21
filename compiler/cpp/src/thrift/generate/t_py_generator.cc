@@ -325,7 +325,10 @@ public:
     }
     if(t->is_set()) return type_to_python_typedef_spec(((t_set*)t)->get_elem_type());
     if(t->is_list()) return type_to_python_typedef_spec(((t_list*)t)->get_elem_type());
-    if(t->is_typedef()) return type_name(t);
+    if(t->is_typedef() && !((t_typedef*)t)->is_forward_typedef()) {
+      string s = type_name(t);
+      return s;
+    }
     return "None";
   }
 
