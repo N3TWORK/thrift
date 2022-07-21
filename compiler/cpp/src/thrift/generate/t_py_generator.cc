@@ -40,6 +40,8 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+static bool no_typedef_or_enums_in_spec = false;
+
 static const string endl = "\n"; // avoid ostream << std::endl flushes
 
 /**
@@ -266,6 +268,8 @@ public:
    * Helper rendering functions
    */
 
+  std::map<t_type*, string> aliased_name;
+
   string py_autogen_comment();
   string py_imports();
   string render_includes();
@@ -295,6 +299,7 @@ public:
   //
   // for lists and sets, the value is of the element type.
   string type_to_python_enum_spec(t_type* t) {
+    if(no_typedef_or_enums_in_spec) return "None";
     t = unwrap_typedef(t);
     if(t->is_map()) {
       auto m = (t_map*)t;
@@ -312,6 +317,7 @@ public:
   //
   // for lists and sets, the value is of the element type.
   string type_to_python_typedef_spec(t_type* t) {
+    if(no_typedef_or_enums_in_spec) return "None";
     t = unwrap_alias(t);
     if(t->is_map()) {
       auto m = (t_map*)t;
@@ -521,6 +527,7 @@ string t_py_generator::render_includes() {
           continue;
         }
         result += t->get_symbolic() + " = " + type_name(u) + "\n";
+        aliased_name[u] = t->get_symbolic();
       }
     }
   }
@@ -822,8 +829,11 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         << "'" << (*m_iter)->get_name() << "'" << ", "  // field name [2]
         << type_to_spec_args((*m_iter)->get_type()) << ", " // type spec args [3]
         << render_field_default_value(*m_iter) << ", " // default value [4]
+
         << type_to_python_enum_spec((*m_iter)->get_type()) << ", " // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
         << type_to_python_typedef_spec((*m_iter)->get_type()) << ", " // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
+
+
         << (((*m_iter)->get_req() == t_field::T_REQUIRED) ? "True" : "False") << ", " // required field? [7]
         << annotations_dict(*m_iter) << ", " // annotations [8]
         << "),"
@@ -2797,6 +2807,10 @@ string t_py_generator::type_name(t_type* ttype) {
   t_program* program = ttype->get_program();
   if (ttype->is_service()) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + "." + ttype->get_name();
+  }
+  string n = aliased_name[ttype];
+  if(n != "") {
+    return n;
   }
   if (program != NULL && *program != *program_) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + ".ttypes." + ttype->get_name();
