@@ -878,7 +878,7 @@ void t_py_generator::generate_py_struct_definition(ostream& out,
     indent(out) << "annotations = {\n";
     indent_up();
     for(auto a = tstruct->annotations_.begin(); a != tstruct->annotations_.end(); ++a) {
-      indent(out) << quote_string(a->first) << ": " + quote_string(a->second) << ",";
+      indent(out) << quote_string(a->first) << ": " + quote_string(a->second) << "," << "\n";
     }
     indent_down();
     out << "\n";
