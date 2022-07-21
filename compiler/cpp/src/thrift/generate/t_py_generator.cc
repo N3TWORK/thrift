@@ -40,6 +40,8 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+static bool no_typedef_or_enums_in_spec = false;
+
 static const string endl = "\n"; // avoid ostream << std::endl flushes
 
 /**
@@ -266,6 +268,8 @@ public:
    * Helper rendering functions
    */
 
+  std::map<t_type*, string> aliased_name;
+
   string py_autogen_comment();
   string py_imports();
   string render_includes();
@@ -295,6 +299,7 @@ public:
   //
   // for lists and sets, the value is of the element type.
   string type_to_python_enum_spec(t_type* t) {
+    if(no_typedef_or_enums_in_spec) return "None";
     t = unwrap_typedef(t);
     if(t->is_map()) {
       auto m = (t_map*)t;
@@ -312,6 +317,7 @@ public:
   //
   // for lists and sets, the value is of the element type.
   string type_to_python_typedef_spec(t_type* t) {
+    if(no_typedef_or_enums_in_spec) return "None";
     t = unwrap_alias(t);
     if(t->is_map()) {
       auto m = (t_map*)t;
@@ -319,7 +325,10 @@ public:
     }
     if(t->is_set()) return type_to_python_typedef_spec(((t_set*)t)->get_elem_type());
     if(t->is_list()) return type_to_python_typedef_spec(((t_list*)t)->get_elem_type());
-    if(t->is_typedef()) return type_name(t);
+    if(t->is_typedef() && !((t_typedef*)t)->is_forward_typedef()) {
+      string s = type_name(t);
+      return s;
+    }
     return "None";
   }
 
@@ -484,7 +493,7 @@ void t_py_generator::init_generator() {
   // Print header
   f_types_ << py_autogen_comment() << endl
            << py_imports() << endl
-           << render_includes() << endl
+           << render_includes()
            << "from thrift.transport import TTransport" << endl
            << import_dynbase_;
 
@@ -506,8 +515,8 @@ string t_py_generator::render_includes() {
     result += "import " + get_real_py_module(includes[i], gen_twisted_, package_prefix_) + ".ttypes\n";
   }
   auto typedefs = program_->get_typedefs();
+  bool first = true;
   if(!typedefs.empty()) {
-    result += "\n";
     for(auto i = typedefs.begin(); i != typedefs.end(); ++i) {
       auto t = *i;
       if(t->annotations_.count("alias")) {
@@ -520,10 +529,16 @@ string t_py_generator::render_includes() {
           // rather than spend time to find and fix, for now just skip
           continue;
         }
+        if(first) {
+          result += "\n";
+          first = false;
+        }
         result += t->get_symbolic() + " = " + type_name(u) + "\n";
+        aliased_name[u] = t->get_symbolic();
       }
     }
   }
+  if(result != "") result += "\n";
   return result;
 }
 
@@ -791,10 +806,7 @@ void t_py_generator::generate_py_struct(t_struct* tstruct, bool is_exception) {
  * Generate the thrift_spec for a struct
  * For example,
  *   all_structs.append(Recursive)
- *   Recursive.thrift_spec = (
- *       None,  # 0
- *       (1, TType.LIST, 'Children', (TType.STRUCT, (Recursive, None), False), None, ),  # 1
- *   )
+ *   Recursive.thrift_spec = (...)
  */
 void t_py_generator::generate_py_thrift_spec(ostream& out,
                                              t_struct* tstruct,
@@ -822,8 +834,10 @@ void t_py_generator::generate_py_thrift_spec(ostream& out,
         << "'" << (*m_iter)->get_name() << "'" << ", "  // field name [2]
         << type_to_spec_args((*m_iter)->get_type()) << ", " // type spec args [3]
         << render_field_default_value(*m_iter) << ", " // default value [4]
+
         << type_to_python_enum_spec((*m_iter)->get_type()) << ", " // enum information (redundant w/ other info, but I don't want to break back-compat) [5]
         << type_to_python_typedef_spec((*m_iter)->get_type()) << ", " // typedef information (redundant w/ other info, but I don't want to break back-compat) [6]
+
         << (((*m_iter)->get_req() == t_field::T_REQUIRED) ? "True" : "False") << ", " // required field? [7]
         << annotations_dict(*m_iter) << ", " // annotations [8]
         << "),"
@@ -2799,6 +2813,10 @@ string t_py_generator::type_name(t_type* ttype) {
   t_program* program = ttype->get_program();
   if (ttype->is_service()) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + "." + ttype->get_name();
+  }
+  string n = aliased_name[ttype];
+  if(n != "") {
+    return n;
   }
   if (program != NULL && *program != *program_) {
     return get_real_py_module(program, gen_twisted_, package_prefix_) + ".ttypes." + ttype->get_name();
