@@ -877,8 +877,11 @@ void t_py_generator::generate_py_struct_definition(ostream& out,
   } else {
     indent(out) << "annotations = {\n";
     indent_up();
+    bool newline = false;
     for(auto a = tstruct->annotations_.begin(); a != tstruct->annotations_.end(); ++a) {
+      if(newline) out << "\n";
       indent(out) << quote_string(a->first) << ": " + quote_string(a->second) << ",";
+      newline = true;
     }
     indent_down();
     out << "\n";
@@ -2579,20 +2582,20 @@ void t_py_generator::generate_serialize_container(ostream& out, t_type* ttype, s
   }
 
   if (ttype->is_map()) {
-    string kiter = tmp("kiter");
-    string viter = tmp("viter");
+    string kiter = tmp("_kiter");
+    string viter = tmp("_viter");
     indent(out) << "for " << kiter << ", " << viter << " in " << prefix << ".items():" << endl;
     indent_up();
     generate_serialize_map_element(out, (t_map*)ttype, kiter, viter);
     indent_down();
   } else if (ttype->is_set()) {
-    string iter = tmp("iter");
+    string iter = tmp("_iter");
     indent(out) << "for " << iter << " in " << prefix << ":" << endl;
     indent_up();
     generate_serialize_set_element(out, (t_set*)ttype, iter);
     indent_down();
   } else if (ttype->is_list()) {
-    string iter = tmp("iter");
+    string iter = tmp("_iter");
     indent(out) << "for " << iter << " in " << prefix << ":" << endl;
     indent_up();
     generate_serialize_list_element(out, (t_list*)ttype, iter);
