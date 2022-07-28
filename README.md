@@ -4,6 +4,32 @@ N3twork Triumph project branch of thrift compiler.
 
 (Note: A build is checked into the triumph repo, so you only need to do this if you want to make further modifications to the compiler.)
 
+Triumph-specific build instructions. Why? Because it results in a build without thrift Version strings all over it. There's a better fix for this I'm sure, but adding these instructions here because not doing it this way led to lots of diffs in generated code:
+```
+brew install cmake bison # known to work w/ cmake 3.23.3 and bison v3.8.2
+echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.zshrc
+cd compiler/cpp
+mkdir cmake-build && cd cmake-build
+cmake ..
+make thrift-compiler -j$(nproc)
+```
+
+CAUTION: I (EK) had to install 3.24.20220708 using --HEAD to get old macos versions to be supported by the thrift executable
+
+(you can check like this
+
+```
+$ otool -l bin/thrift | rg minos
+    minos 11.0
+$ file bin/thrift
+thrift: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64Mach-O 64-bit executable x86_64] [arm64]
+thrift (for architecture x86_64):	Mach-O 64-bit executable x86_64
+thrift (for architecture arm64):	Mach-O 64-bit executable arm64
+```
+)
+
+Build instructions that result in valid Thrift version number in the generated code.
 ```
 brew install bison # known to work w/ v3.4.1
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
@@ -17,7 +43,7 @@ make thrift-compiler -j$(nproc)
 
 ```
 docker build -t thrift build/docker/ubuntu-bionic
-docker run --rm -it --entrypoint bash -v (pwd):/thrift_src thrift
+docker run --rm -it --entrypoint bash -v $(pwd):/thrift_src thrift
 
 # Once inside docker container
 cd /thrift_src

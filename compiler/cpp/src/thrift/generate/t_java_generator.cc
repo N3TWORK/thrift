@@ -2230,7 +2230,7 @@ void t_java_generator::generate_java_validator(ostream& out, t_struct* tstruct) 
 
   out << indent() << "// check for sub-struct validity" << endl;
   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    t_type* type = (*f_iter)->get_type();
+    t_type* type = get_true_type((*f_iter)->get_type());
     if (type->is_struct() && !((t_struct*)type)->is_union()) {
       out << indent() << "if (" << getter(*f_iter) << " != null) {" << endl;
       out << indent() << "  " << getter(*f_iter) << ".validate();" << endl;
@@ -2632,7 +2632,7 @@ void t_java_generator::generate_java_bean_boilerplate(ostream& out, t_struct* ts
       if (bean_style_) {
         out << "void";
       } else {
-        out << type_name(tstruct);
+        out << tstruct->get_name();
       }
       out << " set" << cap_name << "(byte[] " << field_name << ") {" << endl;
       indent(out) << "  this." << field_name << " = " << field_name << " == null ? (java.nio.ByteBuffer)null";
@@ -2655,7 +2655,7 @@ void t_java_generator::generate_java_bean_boilerplate(ostream& out, t_struct* ts
     if (bean_style_) {
       out << "void";
     } else {
-      out << type_name(tstruct);
+      out << tstruct->get_name();
     }
     out << " set" << cap_name << "(" << (type_can_be_null(type) ? (java_nullable_annotation() + " ") : "")
         << ftnm << " " << field_name << ") {" << endl;
@@ -2927,7 +2927,8 @@ void t_java_generator::generate_field_value_meta_data(std::ostream& out, t_type*
   out << endl;
   indent_up();
   indent_up();
-  if (type->is_struct() || type->is_xception()) {
+  t_type* ttype = get_true_type(type);
+  if (ttype->is_struct() || ttype->is_xception()) {
     indent(out) << "new "
                    "org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType."
                    "STRUCT, " << type_name(type) << ".class";
