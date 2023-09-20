@@ -354,7 +354,7 @@ void t_sql_generator::generate_enum(t_enum* tenum) {
 /**
  * Generate a constant value
  */
-void t_sql_generator::generate_const(t_const* tconst) {
+void t_sql_generator::generate_const(__attribute__((unused)) t_const* tconst) {
   return;
 }
 
@@ -488,7 +488,7 @@ void t_sql_generator::generate_forward_declaration(t_struct* tstruct) {
 /**
  * Generates a python struct
  */
-void t_sql_generator::generate_struct(t_struct* tstruct) {
+void t_sql_generator::generate_struct(__attribute__((unused)) t_struct* tstruct) {
   return;
 }
 
@@ -498,7 +498,7 @@ void t_sql_generator::generate_struct(t_struct* tstruct) {
  *
  * @param txception The struct definition
  */
-void t_sql_generator::generate_xception(t_struct* txception) {
+void t_sql_generator::generate_xception(__attribute__((unused)) t_struct* txception) {
   return;
 }
 
@@ -679,7 +679,7 @@ void t_sql_generator::generate_py_struct_required_validator(ofstream& out, t_str
  *
  * @param tservice The service definition
  */
-void t_sql_generator::generate_service(t_service* tservice) {
+void t_sql_generator::generate_service(__attribute__((unused)) t_service* tservice) {
   return;
 }
 
