@@ -2925,12 +2925,7 @@ void t_csharp_generator::generate_deserialize_container(ostream& out,
     out << indent() << "TList " << obj << " = iprot.ReadListBegin();" << endl;
   }
 
-  if (ttype->is_list()) {
-    indent(out) << prefix << " = new " << field_type_name(f, false) << "(" << obj << ".Count);" << endl;
-  } else {
-    indent(out) << prefix << " = new " << field_type_name(f, false) << "();" << endl;
-  }
-
+  indent(out) << prefix << " = new " << field_type_name(f, false) << "(" << obj << ".Count);" << endl;
 
   string i = tmp("_i");
   indent(out) << "for( int " << i << " = 0; " << i << " < " << obj << ".Count"
